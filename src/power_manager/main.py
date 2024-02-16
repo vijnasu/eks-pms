@@ -122,47 +122,60 @@ def main():
     parser.add_argument('-T', '--turbo', action='store_true', help="Enable Turbo Boost")
     parser.add_argument('-t', '--no-turbo', action='store_true', help="Disable Turbo Boost")
 
-    args = parser.parse_args()
+    try:
+        args = parser.parse_args()
+    except:
+        parser.print_help()
+        sys.exit(0)
+    
+    try:
+        # Validate core range    
+        if args.range:
+            core_range = parse_core_range(args.range)
+            # Validate core range
+            total_cores = os.cpu_count()
+            if any(core < 0 or core >= total_cores for core in core_range):
+                raise ValueError(f"Core range is out of bounds. System has {total_cores} cores.")
+        else:
+            core_range = range(os.cpu_count())
 
-    if args.range:
-        core_range = parse_core_range(args.range)
-        # Validate core range
-        total_cores = os.cpu_count()
-        if any(core < 0 or core >= total_cores for core in core_range):
-            raise ValueError(f"Core range is out of bounds. System has {total_cores} cores.")
-    else:
-        core_range = range(os.cpu_count())
-
-    # Display current settings
-    print("Before changes:")
-    for core in core_range:
-        print(f"Core {core}: Governor: {get_current_governor(core)}, Frequency: {get_current_frequency(core)} MHz, Min: {get_min_frequency(core)} MHz, Max: {get_max_frequency(core)} MHz")
-    print(f"Turbo Boost: {get_turbo_status()}")
-
-    # Apply changes
-    if args.governor:
-        validate_governor(args.governor)  # Validate governor
-        set_governor(core_range, args.governor)
-    if args.max:
+        # Display current settings
+        print("Before changes:")
         for core in core_range:
-            validate_frequency(core, args.max, "max")  # Validate max frequency
-        set_frequency(core_range, max_freq=args.max)
-    if args.min:
-        for core in core_range:
-            validate_frequency(core, args.min, "min")  # Validate min frequency
-        set_frequency(core_range, min_freq=args.min)
-    if args.set:
-        set_frequency(core_range, set_freq=args.set)  # Direct frequency setting might not require validation
-    if args.turbo:
-        enable_turbo(enable=True)
-    if args.no_turbo:
-        enable_turbo(enable=False)
+            print(f"Core {core}: Governor: {get_current_governor(core)}, Frequency: {get_current_frequency(core)} MHz, Min: {get_min_frequency(core)} MHz, Max: {get_max_frequency(core)} MHz")
+        print(f"Turbo Boost: {get_turbo_status()}")
 
-    # Display new settings
-    print("\nAfter changes:")
-    for core in core_range:
-        print(f"Core {core}: Governor: {get_current_governor(core)}, Frequency: {get_current_frequency(core)} MHz, Min: {get_min_frequency(core)} MHz, Max: {get_max_frequency(core)} MHz")
-    print(f"Turbo Boost: {get_turbo_status()}")
-            
+        # Apply changes
+        if args.governor:
+            validate_governor(args.governor)  # Validate governor
+            set_governor(core_range, args.governor)
+        if args.max:
+            for core in core_range:
+                validate_frequency(core, args.max, "max")  # Validate max frequency
+            set_frequency(core_range, max_freq=args.max)
+        if args.min:
+            for core in core_range:
+                validate_frequency(core, args.min, "min")  # Validate min frequency
+            set_frequency(core_range, min_freq=args.min)
+        if args.set:
+            set_frequency(core_range, set_freq=args.set)  # Direct frequency setting might not require validation
+        if args.turbo:
+            enable_turbo(enable=True)
+        if args.no_turbo:
+            enable_turbo(enable=False)
+
+        # Display new settings
+        print("\nAfter changes:")
+        for core in core_range:
+            print(f"Core {core}: Governor: {get_current_governor(core)}, Frequency: {get_current_frequency(core)} MHz, Min: {get_min_frequency(core)} MHz, Max: {get_max_frequency(core)} MHz")
+        print(f"Turbo Boost: {get_turbo_status()}")
+    
+    except ValueError as e:
+        print(f"Error: {e}")
+    except IOError as e:
+        print(f"I/O Error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        
 if __name__ == "__main__":
     main()
