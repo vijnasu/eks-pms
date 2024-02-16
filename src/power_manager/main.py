@@ -6,6 +6,24 @@ import argparse
 # Define the paths to the sysfs entries for CPU frequency and power management
 cpu_base_path = "/sys/devices/system/cpu"
 
+def get_current_governor(core):
+    """Retrieves the current CPU governor for a specified core."""
+    gov_path = f"{cpu_base_path}/cpu{core}/cpufreq/scaling_governor"
+    with open(gov_path, 'r') as f:
+        return f.read().strip()
+
+def get_current_frequency(core):
+    """Retrieves the current CPU frequency for a specified core."""
+    freq_path = f"{cpu_base_path}/cpu{core}/cpufreq/scaling_cur_freq"
+    with open(freq_path, 'r') as f:
+        return int(f.read().strip()) // 1000  # Convert from kHz to MHz
+
+def get_turbo_status():
+    """Retrieves the current Turbo Boost status."""
+    turbo_path = "/sys/devices/system/cpu/intel_pstate/no_turbo"
+    with open(turbo_path, 'r') as f:
+        return 'Disabled' if f.read().strip() == '1' else 'Enabled'
+
 def set_governor(core_range, governor):
     """Sets the CPU governor for the specified core range."""
     for core in core_range:
@@ -63,6 +81,13 @@ def main():
     else:
         core_range = range(os.cpu_count())
 
+    # Display current settings
+    print("Before changes:")
+    for core in core_range:
+        print(f"Core {core}: Governor: {get_current_governor(core)}, Frequency: {get_current_frequency(core)} MHz")
+    if args.turbo or args.no_turbo:
+        print(f"Turbo Boost: {get_turbo_status()}")
+
     if args.governor:
         set_governor(core_range, args.governor)
     if args.max or args.min or args.set:
@@ -72,5 +97,12 @@ def main():
     if args.no_turbo:
         enable_turbo(enable=False)
 
+    # Display new settings
+    print("\nAfter changes:")
+    for core in core_range:
+        print(f"Core {core}: Governor: {get_current_governor(core)}, Frequency: {get_current_frequency(core)} MHz")
+    if args.turbo or args.no_turbo:
+        print(f"Turbo Boost: {get_turbo_status()}")
+        
 if __name__ == "__main__":
     main()
