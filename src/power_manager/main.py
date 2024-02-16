@@ -6,6 +6,13 @@ import argparse
 # Define the paths to the sysfs entries for CPU frequency and power management
 cpu_base_path = "/sys/devices/system/cpu"
 
+# get_governers function
+def get_governors():
+    """Retrieves the available CPU governors."""
+    gov_path = f"{cpu_base_path}/cpu0/cpufreq/scaling_available_governors"
+    with open(gov_path, 'r') as f:
+        return f.read().strip().split()
+    
 # get_current_governor function
 def get_current_governor(core):
     """Retrieves the current CPU governor for a specified core."""
