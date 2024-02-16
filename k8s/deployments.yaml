@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: power-management-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: power-manager
+  template:
+    metadata:
+      labels:
+        app: power-manager
+    spec:
+      containers:
+      - name: power-manager
+        image: <your-docker-image>
+        ports:
+        - containerPort: 8080

@@ -1,0 +1,34 @@
+# The Mimir configuration can be quite complex and depends heavily on your specific use case,
+# especially for storage backends and clustering setups. Below is a very basic example.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 9009
+
+ingester:
+  wal:
+    dir: /mimir/wal
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+
+schema:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+
+storage:
+  boltdb_shipper:
+    active_index_directory: /mimir/index
+    shared_store: filesystem
+  filesystem:
+    directory: /mimir/chunks
