@@ -20,7 +20,7 @@ def get_current_frequency(core):
     with open(freq_path, 'r') as f:
         return int(f.read().strip()) // 1000  # Convert from kHz to MHz
 
-# get_min_frequency and get_max_frequency functions
+# get_min_frequency
 def get_min_frequency(core):
     """Retrieves the current CPU frequency for a specified core."""
     freq_path = f"{cpu_base_path}/cpu{core}/cpufreq/scaling_min_freq"
@@ -40,6 +40,25 @@ def get_turbo_status():
     turbo_path = "/sys/devices/system/cpu/intel_pstate/no_turbo"
     with open(turbo_path, 'r') as f:
         return 'Disabled' if f.read().strip() == '1' else 'Enabled'
+
+# get_governors function
+def validate_governor(governor):
+    """Validates if the provided governor is supported."""
+    supported_governors = get_governors()  # Assuming get_governors() returns a list of available governors
+    if governor not in supported_governors:
+        raise ValueError(f"Unsupported governor '{governor}'. Supported governors are: {supported_governors}")
+
+# validate_frequency function
+def validate_frequency(core, frequency, min_or_max):
+    """Validates if the provided frequency is within the supported range for the core."""
+    if min_or_max == "min":
+        max_freq = get_max_frequency(core)
+        if frequency > max_freq:
+            raise ValueError(f"Minimum frequency {frequency} MHz cannot be higher than the current maximum frequency {max_freq} MHz for core {core}")
+    elif min_or_max == "max":
+        min_freq = get_min_frequency(core)
+        if frequency < min_freq:
+            raise ValueError(f"Maximum frequency {frequency} MHz cannot be lower than the current minimum frequency {min_freq} MHz for core {core}")
 
 # set_governor function
 def set_governor(core_range, governor):
@@ -100,20 +119,33 @@ def main():
 
     if args.range:
         core_range = parse_core_range(args.range)
+        # Validate core range
+        total_cores = os.cpu_count()
+        if any(core < 0 or core >= total_cores for core in core_range):
+            raise ValueError(f"Core range is out of bounds. System has {total_cores} cores.")
     else:
-        core_range = range(os.cpu_count())    
-    
-    # Display current, min, max settings
+        core_range = range(os.cpu_count())
+
+    # Display current settings
     print("Before changes:")
     for core in core_range:
         print(f"Core {core}: Governor: {get_current_governor(core)}, Frequency: {get_current_frequency(core)} MHz, Min: {get_min_frequency(core)} MHz, Max: {get_max_frequency(core)} MHz")
     print(f"Turbo Boost: {get_turbo_status()}")
-    
+
     # Apply changes
     if args.governor:
+        validate_governor(args.governor)  # Validate governor
         set_governor(core_range, args.governor)
-    if args.max or args.min or args.set:
-        set_frequency(core_range, min_freq=args.min, max_freq=args.max, set_freq=args.set)
+    if args.max:
+        for core in core_range:
+            validate_frequency(core, args.max, "max")  # Validate max frequency
+        set_frequency(core_range, max_freq=args.max)
+    if args.min:
+        for core in core_range:
+            validate_frequency(core, args.min, "min")  # Validate min frequency
+        set_frequency(core_range, min_freq=args.min)
+    if args.set:
+        set_frequency(core_range, set_freq=args.set)  # Direct frequency setting might not require validation
     if args.turbo:
         enable_turbo(enable=True)
     if args.no_turbo:
