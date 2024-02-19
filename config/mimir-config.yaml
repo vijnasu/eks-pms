@@ -1,14 +1,19 @@
-# The Mimir configuration can be quite complex and depends heavily on your specific use case,
-# especially for storage backends and clustering setups. Below is a very basic example.
-
 auth_enabled: false
 
 server:
-  http_listen_port: 9009
+  http_listen_port: 3100
+
+distributor:
+  shard_by_all_labels: true
+  pool:
+    health_check_ingesters: true
+
+ingester_client:
+  grpc_client_config:
+    max_recv_msg_size: 104857600
+    max_send_msg_size: 104857600
 
 ingester:
-  wal:
-    dir: /mimir/wal
   lifecycler:
     address: 127.0.0.1
     ring:
@@ -16,9 +21,9 @@ ingester:
         store: inmemory
       replication_factor: 1
 
-schema:
+schema_config:
   configs:
-    - from: 2020-10-24
+    - from: 2020-05-15
       store: boltdb-shipper
       object_store: filesystem
       schema: v11
@@ -26,9 +31,15 @@ schema:
         prefix: index_
         period: 24h
 
-storage:
+storage_config:
   boltdb_shipper:
-    active_index_directory: /mimir/index
+    active_index_directory: /tmp/mimir/index
+    cache_location: /tmp/mimir/index_cache
     shared_store: filesystem
   filesystem:
-    directory: /mimir/chunks
+    directory: /tmp/mimir/chunks
+
+limits_config:
+  enforce_metric_name: false
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h

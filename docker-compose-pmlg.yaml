@@ -27,6 +27,5 @@ services:
     image: grafana/grafana
     ports:
       - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=secret
-
+    volumes:
+      - ./config/grafana.ini:/etc/grafana/grafana.ini  # Mounting grafana.ini
