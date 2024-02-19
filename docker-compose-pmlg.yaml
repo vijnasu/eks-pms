@@ -1,0 +1,32 @@
+version: '3.7'
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./config/prometheus-config.yaml:/etc/prometheus/prometheus.yaml
+    ports:
+      - "9090:9090"
+
+  mimir:
+    image: grafana/mimir
+    command: -config.file=/etc/mimir/mimir.yaml
+    volumes:
+      - ./config/mimir-config.yaml:/etc/mimir/mimir.yaml
+    ports:
+      - "3100:3100"
+
+  loki:
+    image: grafana/loki
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./config/loki-config.yaml:/etc/loki/loki.yaml
+    ports:
+      - "3101:3100"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=secret
+
