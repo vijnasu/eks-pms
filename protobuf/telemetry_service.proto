@@ -3,6 +3,7 @@
 syntax = "proto3";
 
 import "telemetry.proto";
+import "google/protobuf/empty.proto";
 
 package telemetry;
 
