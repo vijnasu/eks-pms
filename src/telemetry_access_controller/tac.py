@@ -8,7 +8,7 @@ import configparser
 
 # Import the generated Protobuf code
 import generated.tac_pb2 as tac_pb2
-import generated.tac_pb2_grpc as tac_pb2_grpc
+import generated.tac_pb2_grpc as tac_service_pb2_grpc
 
 # Abstract Base Classes for Telemetry Operations
 
@@ -97,7 +97,7 @@ class DashboardManagerFactory:
 
 # TacService gRPC Service Implementation
 
-class TacService(tac_pb2_grpc.TacServiceServicer):
+class TacService(tac_service_pb2_grpc.TacServiceServicer):
     def __init__(self, metrics_collector, logs_collector, dashboard_manager):
         self.metrics_collector = metrics_collector
         self.logs_collector = logs_collector
