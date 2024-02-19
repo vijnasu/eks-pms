@@ -1,4 +1,4 @@
-// telemetry.proto
+// tac.proto
 
 syntax = "proto3";
 
