@@ -4,11 +4,15 @@ from abc import ABC, abstractmethod
 from concurrent import futures
 import grpc
 import requests
-import configparser
+
+try:
+    from configparser import ConfigParser
+except ImportError:
+    from ConfigParser import ConfigParser  # ver. < 3.0
 
 # Import the generated Protobuf code
-import generated.tac_pb2 as tac_pb2
-import generated.tac_pb2_grpc as tac_service_pb2_grpc
+import tac_pb2
+import tac_service_pb2_grpc
 
 # Abstract Base Classes for Telemetry Operations
 
@@ -137,7 +141,7 @@ class TacService(tac_service_pb2_grpc.TacServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f'Error creating dashboard: {str(e)}')
             return tac_pb2.QueryResponse(status="error", error=str(e))
-    
+
     def UpdateDashboard(self, request, context):
         try:
             result = self.dashboard_manager.update_dashboard(request)
@@ -146,8 +150,11 @@ class TacService(tac_service_pb2_grpc.TacServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f'Error updating dashboard: {str(e)}')
             return tac_pb2.QueryResponse(status="error", error=str(e))
-                
-config = configparser.ConfigParser()
+
+config = ConfigParser()
+
+# parse existing file
+config.read('telemetry_config.ini')
 
 def get_telemetry_systems():
     metrics_system = config.get('TelemetrySystems', 'Metrics')
@@ -165,7 +172,7 @@ service = TacService(metrics_collector, logs_collector, dashboard_manager)
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    tac_pb2_grpc.add_TacServiceServicer_to_server(TacService(), server)
+    tac_service_pb2_grpc.add_TacServiceServicer_to_server(service, server)
     server.add_insecure_port('[::]:50051')
     server.start()
     print("Server started. Listening on '[::]:50051'")
