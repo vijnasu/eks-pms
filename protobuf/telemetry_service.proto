@@ -1,0 +1,30 @@
+// telemetry_service.proto
+
+syntax = "proto3";
+
+import "telemetry.proto";
+
+package telemetry;
+
+service TelemetryService {
+  // Collects metrics based on provided parameters
+  rpc CollectMetrics(MetricsQuery) returns (QueryResponse);
+
+  // Queries metrics based on provided parameters
+  rpc QueryMetrics(MetricsQuery) returns (QueryResponse);
+
+  // Collects logs based on provided parameters
+  rpc CollectLogs(LogsQuery) returns (QueryResponse);
+
+  // Queries logs based on provided parameters
+  rpc QueryLogs(LogsQuery) returns (QueryResponse);
+
+  // Creates a new dashboard based on provided configuration
+  rpc CreateDashboard(DashboardConfig) returns (QueryResponse);
+
+  // Updates an existing dashboard based on provided configuration
+  rpc UpdateDashboard(DashboardConfig) returns (QueryResponse);
+
+  // Lists all available dashboards
+  rpc ListDashboards(google.protobuf.Empty) returns (stream DashboardConfig);
+}

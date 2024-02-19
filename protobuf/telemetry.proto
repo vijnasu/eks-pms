@@ -1,0 +1,39 @@
+// telemetry.proto
+
+syntax = "proto3";
+
+package telemetry;
+
+// Represents a time range with start and end timestamps
+message TimeRange {
+  string start = 1; // Start time in ISO 8601 format
+  string end = 2;   // End time in ISO 8601 format
+}
+
+// Represents a query for metrics
+message MetricsQuery {
+  string metric = 1;               // Name of the metric
+  TimeRange time_range = 2;        // Time range for the query
+  string aggregation = 3;          // Aggregation function (e.g., sum, avg)
+  string interval = 4;             // Interval for aggregating metrics
+}
+
+// Represents a query for logs
+message LogsQuery {
+  string query = 1;                // The log query string
+  TimeRange time_range = 2;        // Time range for the query
+}
+
+// Represents dashboard configuration
+message DashboardConfig {
+  string name = 1;                 // Name of the dashboard
+  string description = 2;          // Description of the dashboard
+  // Other necessary configuration details can be added here
+}
+
+// Represents the response for a metrics or logs query
+message QueryResponse {
+  string status = 1;               // Status of the query (e.g., success, error)
+  string data = 2;                 // The data returned by the query, as a JSON string
+  string error = 3;                // Error message, if any
+}
