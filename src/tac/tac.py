@@ -40,7 +40,7 @@ class DashboardManager(ABC):
 class PrometheusMetricsCollector(MetricsCollector):
     def query_metrics(self, query):
         # Prometheus-specific metric querying logic
-        response = requests.get('http://prometheus-url/api/v1/query', params={'query': query})
+        response = requests.get(f'{prometheus_url}/api/v1/query', params={'query': query.metric})
         if response.status_code == 200:
             return response.json()
         else:
@@ -59,7 +59,7 @@ class LokiLogsCollector(LogsCollector):
 class GrafanaDashboardManager(DashboardManager):
     def create_dashboard(self, config):
         # Grafana-specific dashboard creation logic
-        response = requests.post('http://grafana-url/api/dashboards/db', json=config)
+        response = requests.post(f'{grafana_url}/api/dashboards/db', json=config, auth=(grafana_admin_user, grafana_admin_password))
         if response.status_code == 200:
             return response.json()
         else:
@@ -108,13 +108,47 @@ class TacService(tac_service_pb2_grpc.TacServiceServicer):
         self.dashboard_manager = dashboard_manager
 
     def CollectMetrics(self, request, context):
-        try:
-            result = self.metrics_collector.query_metrics(request.query)
-            return tac_pb2.QueryResponse(status="success", data=str(result))  # Ensure data is serialized properly
-        except Exception as e:
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f'Error collecting metrics: {str(e)}')
-            return tac_pb2.QueryResponse(status="error", error=str(e))
+    	try:
+        	# Construct the Prometheus query string
+        	# This example simply uses the metric name. You might want to extend this
+        	# to include the time range, aggregation function, and interval.
+        	query_str = request.metric  # For example: 'up'
+        
+        	# Format the start and end times from the request
+        	start = request.time_range.start
+        	end = request.time_range.end
+
+        	# Construct the URL for querying Prometheus with the time range
+        	prometheus_query_url = f'{prometheus_url}/api/v1/query_range'
+        
+        	# Parameters for the Prometheus query
+        	params = {
+            	'query': query_str,
+            	'start': start,
+            	'end': end,
+            	'step': request.interval  # Assuming 'interval' is in an appropriate format (e.g., '30s', '1m', '5m')
+        	}
+
+        	# Query Prometheus
+        	response = requests.get(prometheus_query_url, params=params)
+        	if response.status_code != 200:
+            		raise ValueError(f"Failed to query Prometheus metrics: {response.content}")
+
+        	# Parse the JSON response from Prometheus
+        	json_response = response.json()
+
+        	# Here we might want to further process the JSON response to extract
+        	# the specific data we're interested in. For simplicity, this example
+        	# just converts the JSON response to a string.
+        	data_str = str(json_response)
+
+        	# Return the QueryResponse message
+        	return tac_pb2.QueryResponse(status="success", data=data_str)
+    	except Exception as e:
+        	context.set_code(grpc.StatusCode.INTERNAL)
+        	context.set_details(f'Error collecting metrics: {str(e)}')
+        	return tac_pb2.QueryResponse(status="error", error=str(e))
+
 
     def QueryMetrics(self, request, context):
         # Implement similarly to CollectMetrics, or merge functionality if they're the same
@@ -155,6 +189,15 @@ config = ConfigParser()
 
 # parse existing file
 config.read('telemetry_config.ini')
+
+config = ConfigParser()
+config.read('telemetry_config.ini')
+
+prometheus_url = config.get('Prometheus', 'url')
+grafana_url = config.get('Grafana', 'url')
+grafana_admin_user = config.get('Grafana', 'admin_user')
+grafana_admin_password = config.get('Grafana', 'admin_password')
+# And so on for other services
 
 def get_telemetry_systems():
     metrics_system = config.get('TelemetrySystems', 'Metrics')
