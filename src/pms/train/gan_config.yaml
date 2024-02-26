@@ -1,0 +1,16 @@
+latent_dim: 100
+generator:
+  first_layer_size: 128
+  second_layer_size: 64
+discriminator:
+  first_layer_size: 64
+  second_layer_size: 32
+epochs: 1
+batch_size: 32
+learning_rate: 0.0002
+beta1: 0.5
+beta2: 0.999
+leaky_relu_alpha: 0.2
+gen_model_path: './models/generator_state_dict.pth'
+dis_model_path: './models/discriminator_state_dict.pth'
+prediction_threshold: 0.5  # An example default value; adjust based on model and use case

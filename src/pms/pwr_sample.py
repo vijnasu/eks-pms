@@ -1,7 +1,8 @@
-import pwr
 from termcolor import colored
 import sys
 import subprocess
+import threading
+from intelligent_profile_manager import intelligent_apply_profiles
 
 def check_and_install_pwr():
     try:
@@ -32,6 +33,47 @@ def adjust_cpu_uncore_configuration(cpu):
     cpu.uncore_max_freq = cpu.uncore_hw_max
     print(colored(f"CPU {cpu.cpu_id}: Uncore Min freq set to {cpu.uncore_min_freq}, Uncore Max freq set to {cpu.uncore_max_freq}", "cyan"))
 
+def batch_adjust_core_configurations(cores):
+    for core in cores:
+        core.min_freq = core.lowest_freq
+        core.max_freq = core.highest_freq
+    print(colored("Batch adjusted configurations for all cores.", "cyan"))
+
+def batch_adjust_cpu_uncore_configurations(cpus):
+    for cpu in cpus:
+        cpu.uncore_min_freq = cpu.uncore_hw_min
+        cpu.uncore_max_freq = cpu.uncore_hw_max
+    print(colored("Batch adjusted uncore configurations for all CPUs.", "cyan"))
+
+def commit_changes_concurrently(cores):
+    threads = []
+    for core in cores:
+        thread = threading.Thread(target=commit_core_changes, args=(core,))
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+    print(colored("Concurrently committed changes for all cores.", "green"))
+
+def intelligent_apply_profiles(cores, default_profile="default"):
+    for core in cores:
+        # Placeholder for intelligent decision-making, e.g., based on core usage or temperature
+        profile = determine_profile_for_core(core)  # You need to define this function
+        core.commit(profile)
+    print(colored("Intelligently applied profiles based on core metrics.", "green"))
+
+# Global Refresh with Local Consideration
+# Refreshing stats globally but with consideration for minimizing performance impact:
+    
+def staggered_refresh_stats(system, cpus, cores):
+    system.refresh_stats()  # Refresh system-wide stats
+    for cpu in cpus:
+        cpu.refresh_stats()  # Refresh CPU-specific stats
+        for core in cpu.core_list:
+            core.refresh_stats()  # Refresh core-specific stats, possibly staggered
+    print(colored("Staggered refresh of stats completed.", "green"))
+    
 def commit_core_changes(cores):
     for core in cores:
         core.commit()
@@ -71,7 +113,19 @@ def request_configuration_stability(system):
 
 def display_menu():
     print(colored("\nChoose an option:", "yellow"))
-    options = ["Adjust Core Configuration", "Adjust CPU Uncore Configuration", "Commit Changes", "Apply Preset Profile", "Refresh Stats", "Show Object Referencing", "Adjust EPP and Show Power Consumption", "Configure C-States", "Check Configuration Stability", "Exit"]
+    options = [
+        "Adjust Core Configuration",
+        "Adjust CPU Uncore Configuration",
+        "Commit Changes",
+        "Apply Preset Profile",
+        "Refresh Stats",
+        "Show Object Referencing",
+        "Adjust EPP and Show Power Consumption",
+        "Configure C-States",
+        "Check Configuration Stability",
+        "Intelligently Apply Profiles",  # New option for intelligent profile application
+        "Exit"
+    ]
     for i, option in enumerate(options, 1):
         print(colored(f"{i}. {option}", "yellow"))
 
@@ -84,14 +138,32 @@ def main():
     while True:
         display_menu()
         choice = input(colored("Enter your choice: ", "green"))
+
         if choice == "1":
-            for core in cores:
-                adjust_core_configuration(core)
+            batch_adjust_core_configurations(cores)
         elif choice == "2":
-            for cpu in cpus:
-                adjust_cpu_uncore_configuration(cpu)
-        # Add more elif blocks for other options
+            batch_adjust_cpu_uncore_configurations(cpus)
+        elif choice == "3":
+            commit_changes_concurrently(cores)
+        elif choice == "4":
+            apply_preset_profile(cores, "preset_profile_here")  # Replace "preset_profile_here" with actual profile name
+        elif choice == "5":
+            refresh_stats(system, cpus, cores)
+        elif choice == "6":
+            # Assuming we want to show object referencing for a specific core, we might need to select a core or iterate over cores
+            for core in cores:
+                show_object_referencing(core)
+        elif choice == "7":
+            for core in cores:
+                adjust_epp_and_show_power_consumption(core, "new_epp_value_here")  # Replace "new_epp_value_here" with actual EPP value
+        elif choice == "8":
+            for core in cores:
+                configure_cstates(core, "C-State_Name", True)  # Replace "C-State_Name" with actual C-State name and True/False to enable/disable
+        elif choice == "9":
+            request_configuration_stability(system)
         elif choice == "10":
+            intelligent_apply_profiles(cores)
+        elif choice == "11":
             exit_program()
         else:
             print(colored("Invalid choice, please try again.", "red"))

@@ -1,1 +1,2 @@
 # List python packages to import os sys argparse
+git+https://github.com/intel/CommsPowerManagement.git#egg=pwr&subdirectory=pwr
