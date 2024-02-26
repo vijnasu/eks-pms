@@ -6,12 +6,26 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
+from torch.autograd import Variable, grad
 from termcolor import colored
 import matplotlib.pyplot as plt
 
 # Load configuration
 #with open('gan_config.yaml', 'r') as file:
 #    config = yaml.safe_load(file)
+
+def compute_gradient_penalty(D, real_samples, fake_samples):
+    """Calculates the gradient penalty loss for WGAN GP"""
+    alpha = torch.rand(real_samples.size(0), 1, 1, 1).to(real_samples.device)
+    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
+    d_interpolates = D(interpolates)
+    fake = Variable(torch.Tensor(real_samples.shape[0], 1).fill_(1.0), requires_grad=False).to(real_samples.device)
+    gradients = grad(outputs=d_interpolates, inputs=interpolates,
+                     grad_outputs=fake, create_graph=True, retain_graph=True,
+                     only_inputs=True)[0]
+    gradients = gradients.view(gradients.size(0), -1)
+    gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    return gradient_penalty
 
 # Define a function to encapsulate the training process
 def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv'):
@@ -81,8 +95,8 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
                 nn.LeakyReLU(config['leaky_relu_alpha']),
                 nn.Linear(config['discriminator']['first_layer_size'], config['discriminator']['second_layer_size']),
                 nn.LeakyReLU(config['leaky_relu_alpha']),
-                nn.Linear(config['discriminator']['second_layer_size'], 1),
-                nn.Sigmoid()
+                nn.Linear(config['discriminator']['second_layer_size'], 1)
+                # Removed Sigmoid activation
             )
 
         def forward(self, data):
@@ -111,49 +125,50 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     g_losses = []
 
     # Training loop with gradient clipping and dynamic LR scheduler update
+    
     for epoch in range(config['epochs']):
         for i, (features, targets) in enumerate(dataloader):
-            valid = torch.ones((features.size(0), 1), requires_grad=False) * 0.9
-            fake = torch.zeros((features.size(0), 1), requires_grad=False) * 0.1
-
-            # -----------------
-            #  Train Generator
-            # -----------------
-            optimizer_G.zero_grad()
-
-            # Sample noise as generator input
-            z = torch.randn(features.size(0), config['latent_dim'])
-
-            # Generate a batch of images
-            generated_targets = generator(z)
-
-            # Loss measures generator's ability to fool the discriminator
-            g_loss = adversarial_loss(discriminator(torch.cat((features, generated_targets), 1)), valid)
-            g_loss.backward()
-            optimizer_G.step()
-
-            # ---------------------
-            #  Train Discriminator
-            # ---------------------
+            # Train Discriminator
             optimizer_D.zero_grad()
 
-            # Measure discriminator's ability to classify real from generated samples
-            real_loss = adversarial_loss(discriminator(torch.cat((features, targets), 1)), valid)
-            fake_loss = adversarial_loss(discriminator(torch.cat((features, generated_targets.detach()), 1)), fake)
-            d_loss = (real_loss + fake_loss) / 2
+            # Generate a batch of images
+            z = torch.randn(features.size(0), config['latent_dim'])
+            generated_targets = generator(z)
+
+            # Real images
+            real_loss = discriminator(torch.cat((features, targets), 1))
+            # Fake images
+            fake_loss = discriminator(torch.cat((features, generated_targets.detach()), 1))
+            # Gradient penalty
+            gradient_penalty = compute_gradient_penalty(discriminator, torch.cat((features, targets), 1).data, torch.cat((features, generated_targets), 1).data)
+            # Discriminator loss
+            d_loss = -torch.mean(real_loss) + torch.mean(fake_loss) + config['lambda_gp'] * gradient_penalty
+
             d_loss.backward()
             optimizer_D.step()
 
+            # Train the generator every n_critic iterations
+            if i % config['n_critic'] == 0:
+                optimizer_G.zero_grad()
+
+                # Generate a batch of images
+                generated_targets = generator(z)
+                # Generator loss
+                g_loss = -torch.mean(discriminator(torch.cat((features, generated_targets), 1)))
+
+                g_loss.backward()
+                optimizer_G.step()
+
             # Logging
-            if i % 100 == 0:  # Log every 100 batches
+            if i % 100 == 0:
                 print(colored(f"Batch {i} | Epoch: {epoch} | D Loss: {d_loss.item()} | G Loss: {g_loss.item()}", "blue"))
-            
+
         # Epoch-level logging
-        if epoch % 100 == 0:  # Adjust the epoch logging frequency as needed
+        if epoch % 100 == 0:
             print(colored(f"Epoch {epoch} | Avg D Loss: {np.mean(d_losses[-100:])} | Avg G Loss: {np.mean(g_losses[-100:])}", "magenta"))
 
     print(colored("Training completed!", "cyan"))
-    
+
     # Performance evaluation
     avg_d_loss = np.mean(d_losses[-100:])  # Adjust the range as needed
     avg_g_loss = np.mean(g_losses[-100:])  # Adjust the range as needed
