@@ -1,11 +1,11 @@
 import numpy as np
-import yaml
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
+from termcolor import colored
 
 # Load configuration
 #with open('gan_config.yaml', 'r') as file:
@@ -14,8 +14,12 @@ from torch.utils.data import DataLoader, TensorDataset
 # Define a function to encapsulate the training process
 def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv'):
 
+    print(colored("Starting GAN training...", "cyan"))
+    
     # Load and preprocess the data
     df = pd.read_csv('./data/MLC_Idle_Memory_Latency_Local_Random.csv')
+    
+    print(colored("Data loaded and preprocessing initiated...", "yellow"))
     
     # If 'DateTime' column exists, convert it to datetime and extract features
     if 'DateTime' in df.columns:
@@ -94,6 +98,8 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     # Loss function
     adversarial_loss = nn.BCELoss()
 
+    print(colored("Models initialized. Starting training loop...", "green"))
+    
     # Initialize lists to track losses
     d_losses = []
     g_losses = []
@@ -122,6 +128,11 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
             
             d_losses.append(d_loss.item())
             g_losses.append(g_loss.item())
+        
+        if epoch % 100 == 0:  # Change 100 to your preferred logging frequency
+            print(colored(f"Epoch: {epoch} | Avg D Loss: {np.mean(d_losses[-100:])} | Avg G Loss: {np.mean(g_losses[-100:])}", "blue"))
+    
+    print(colored("Training completed!", "cyan"))
             
     # Evaluate performance based on the average of the last few losses
     # You can adjust the range based on how stable the losses are
@@ -132,5 +143,7 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     # This is a simple metric; you might need to adjust it based on your specific needs
     performance_metric = (avg_d_loss + avg_g_loss) / 2
 
+    print(colored(f"Final Performance Metric: {performance_metric}", "magenta"))
+    
     # Return the performance metric
     return performance_metric
