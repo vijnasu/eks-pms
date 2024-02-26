@@ -43,6 +43,8 @@ for i in range(num_configs):
     config.update({
         'leaky_relu_alpha': 0.2,
         'beta2': 0.999,
+        'step_size': 1000,
+        'gamma': 0.95,
         'gen_model_path': './models/generator_state_dict.pth',
         'dis_model_path': './models/discriminator_state_dict.pth'
     })

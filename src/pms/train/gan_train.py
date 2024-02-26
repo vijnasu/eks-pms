@@ -1,3 +1,4 @@
+import yaml
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -6,6 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from termcolor import colored
+import matplotlib.pyplot as plt
 
 # Load configuration
 #with open('gan_config.yaml', 'r') as file:
