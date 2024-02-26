@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 def compute_gradient_penalty(D, real_samples, fake_samples):
     """Calculates the gradient penalty loss for WGAN GP"""
-    alpha = torch.rand(real_samples.size(0), 1, 1, 1).to(real_samples.device)
+    alpha = torch.rand(real_samples.size(0), 1).to(real_samples.device)  # Adjusted for 1D data
     interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
     d_interpolates = D(interpolates)
     fake = Variable(torch.Tensor(real_samples.shape[0], 1).fill_(1.0), requires_grad=False).to(real_samples.device)
