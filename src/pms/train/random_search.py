@@ -34,7 +34,10 @@ num_configs = 10
 best_performance = float('inf')  # Assuming lower is better; adjust accordingly
 best_config = None
 
-for _ in range(num_configs):
+print("Starting random search for best hyperparameters...")
+
+for i in range(num_configs):
+    print(f"\nTesting configuration {i+1}/{num_configs}...")
     config = random_config(hyperparams_space)
     # Update config with fixed parameters if any
     config.update({
@@ -44,12 +47,17 @@ for _ in range(num_configs):
         'dis_model_path': './models/discriminator_state_dict.pth'
     })
 
+    print(f"Current configuration: {config}")
+
     # Train the GAN with the generated configuration
     performance = train_gan(config)
+
+    print(f"Configuration {i+1} performance: {performance}")
 
     # Evaluate the performance and update the best configuration
     if performance < best_performance:
         best_performance = performance
         best_config = config
+        print(f"New best configuration found: {best_config} with performance: {best_performance}")
 
-print(f"Best configuration: {best_config} with performance: {best_performance}")
+print(f"\nRandom search completed. Best configuration: {best_config} with performance: {best_performance}")
