@@ -110,51 +110,63 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     d_losses = []
     g_losses = []
 
-    # Training loop
+    # Training loop with gradient clipping and dynamic LR scheduler update
     for epoch in range(config['epochs']):
         for i, (features, targets) in enumerate(dataloader):
             valid = torch.ones((features.size(0), 1), requires_grad=False)
             fake = torch.zeros((features.size(0), 1), requires_grad=False)
 
-            # Train Generator
+            # -----------------
+            #  Train Generator
+            # -----------------
             optimizer_G.zero_grad()
+
+            # Sample noise as generator input
             z = torch.randn(features.size(0), config['latent_dim'])
+
+            # Generate a batch of images
             generated_targets = generator(z)
+
+            # Loss measures generator's ability to fool the discriminator
             g_loss = adversarial_loss(discriminator(torch.cat((features, generated_targets), 1)), valid)
+
             g_loss.backward()
+            torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1)  # Gradient clipping for the generator
             optimizer_G.step()
 
-            # Train Discriminator
+            # ---------------------
+            #  Train Discriminator
+            # ---------------------
             optimizer_D.zero_grad()
+
+            # Measure discriminator's ability to classify real from generated samples
             real_loss = adversarial_loss(discriminator(torch.cat((features, targets), 1)), valid)
             fake_loss = adversarial_loss(discriminator(torch.cat((features, generated_targets.detach()), 1)), fake)
             d_loss = (real_loss + fake_loss) / 2
+
             d_loss.backward()
+            torch.nn.utils.clip_grad_norm_(discriminator.parameters(), max_norm=1)  # Gradient clipping for the discriminator
             optimizer_D.step()
-            
+
             # Update learning rate based on the scheduler
-            if epoch >= config['lr_decay_epoch']:
-                lr_scheduler_G.step()
-                lr_scheduler_D.step()
-
-            d_losses.append(d_loss.item())
-            g_losses.append(g_loss.item())
-        
-        if epoch % 100 == 0:  # Change 100 to your preferred logging frequency
-            print(colored(f"Epoch: {epoch} | Avg D Loss: {np.mean(d_losses[-100:])} | Avg G Loss: {np.mean(g_losses[-100:])}", "blue"))
-    
-    print(colored("Training completed!", "cyan"))
+            lr_scheduler_G.step()
+            lr_scheduler_D.step()
             
-    # Evaluate performance based on the average of the last few losses
-    # You can adjust the range based on how stable the losses are
-    avg_d_loss = np.mean(d_losses[-100:])  # Average of the last 100 discriminator losses
-    avg_g_loss = np.mean(g_losses[-100:])  # Average of the last 100 generator losses
+            # Logging
+            if i % 100 == 0:  # Log every 100 batches
+                print(colored(f"Batch {i} | Epoch: {epoch} | D Loss: {d_loss.item()} | G Loss: {g_loss.item()}", "blue"))
+            
+        # Epoch-level logging
+        if epoch % 100 == 0:  # Adjust the epoch logging frequency as needed
+            print(colored(f"Epoch {epoch} | Avg D Loss: {np.mean(d_losses[-100:])} | Avg G Loss: {np.mean(g_losses[-100:])}", "magenta"))
 
-    # Combine the losses to form a simple performance metric (lower is better)
-    # This is a simple metric; you might need to adjust it based on your specific needs
-    performance_metric = (avg_d_loss + avg_g_loss) / 2
-
-    print(colored(f"Final Performance Metric: {performance_metric}", "magenta"))
+    print(colored("Training completed!", "cyan"))
     
-    # Return the performance metric
+    # Performance evaluation
+    avg_d_loss = np.mean(d_losses[-100:])  # Adjust the range as needed
+    avg_g_loss = np.mean(g_losses[-100:])  # Adjust the range as needed
+    performance_metric = (avg_d_loss + avg_g_loss) / 2
+    print(colored(f"Final Performance Metric: {performance_metric}", "magenta"))
+
+    # Return the performance metric for further evaluation if needed
     return performance_metric
