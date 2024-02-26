@@ -17,3 +17,5 @@ gamma: 0.95
 gen_model_path: './models/generator_state_dict.pth'
 dis_model_path: './models/discriminator_state_dict.pth'
 prediction_threshold: 0.5  # An example default value; adjust based on model and use case
+lambda_gp: 10
+n_critic: 5

@@ -47,7 +47,9 @@ for i in range(num_configs):
         'step_size': 1000,
         'gamma': 0.95,
         'gen_model_path': './models/generator_state_dict.pth',
-        'dis_model_path': './models/discriminator_state_dict.pth'
+        'dis_model_path': './models/discriminator_state_dict.pth',
+        'lambda_gp': 10,
+        'n_critic': 5
     })
 
     print(f"Current configuration: {config}")
