@@ -95,6 +95,10 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     optimizer_G = optim.Adam(generator.parameters(), lr=config['learning_rate'], betas=(config['beta1'], config['beta2']))
     optimizer_D = optim.Adam(discriminator.parameters(), lr=config['learning_rate'], betas=(config['beta1'], config['beta2']))
 
+    # Initialize learning Rate Schedulers
+    lr_scheduler_G = torch.optim.lr_scheduler.StepLR(optimizer_G, step_size=config['step_size'], gamma=config['gamma'])  # Example decay
+    lr_scheduler_D = torch.optim.lr_scheduler.StepLR(optimizer_D, step_size=config['step_size'], gamma=config['gamma'])  # Example decay
+
     # Loss function
     adversarial_loss = nn.BCELoss()
 
@@ -126,6 +130,11 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
             d_loss.backward()
             optimizer_D.step()
             
+            # Update learning rate based on the scheduler
+            if epoch >= config['lr_decay_epoch']:
+                lr_scheduler_G.step()
+                lr_scheduler_D.step()
+
             d_losses.append(d_loss.item())
             g_losses.append(g_loss.item())
         
