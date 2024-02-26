@@ -14,8 +14,11 @@ with open('gan_config.yaml', 'r') as file:
 
 # Load and preprocess the data
 df_idle_random = pd.read_csv('./data/MLC_Idle_Memory_Latency_Local_Random.csv')
-features = df_idle_random[['curr_freq', 'pkg0_PkgWatt', 'epp']]
+
+# Example for selecting features for core 0
+features = df_idle_random[['core0_base_freq', 'core0_min_freq', 'core0_max_freq', 'c0_CoreTmp', 'pkg0_PkgWatt']]
 features_scaled = StandardScaler().fit_transform(features)
+
 
 # Convert scaled features to PyTorch tensors
 tensor_data = torch.Tensor(features_scaled)
@@ -23,6 +26,7 @@ dataset = TensorDataset(tensor_data)
 dataloader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True)
 
 # GAN Components
+
 class Generator(nn.Module):
     def __init__(self, latent_dim):
         super(Generator, self).__init__()
@@ -31,9 +35,9 @@ class Generator(nn.Module):
             nn.LeakyReLU(config['leaky_relu_alpha']),
             nn.Linear(config['generator']['first_layer_size'], config['generator']['second_layer_size']),
             nn.LeakyReLU(config['leaky_relu_alpha']),
-            nn.Linear(config['generator']['second_layer_size'], 3)
+            nn.Linear(config['generator']['second_layer_size'], 5)  # Output dimension adjusted to 5
         )
-
+    
     def forward(self, z):
         return self.model(z)
 
@@ -41,16 +45,16 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(3, config['discriminator']['first_layer_size']),
+            nn.Linear(5, config['discriminator']['first_layer_size']),  # Input dimension adjusted to 5
             nn.LeakyReLU(config['leaky_relu_alpha']),
             nn.Linear(config['discriminator']['first_layer_size'], config['discriminator']['second_layer_size']),
             nn.LeakyReLU(config['leaky_relu_alpha']),
             nn.Linear(config['discriminator']['second_layer_size'], 1),
             nn.Sigmoid()
         )
-
-    def forward(self, data):
-        return self.model(data)
+    
+    def forward(self, z):
+        return self.model(z)
 
 # Initialize models and optimizers
 generator = Generator(config['latent_dim'])

@@ -38,8 +38,10 @@ def preprocess_data(core_metrics):
     Returns:
         np.array: An array of processed data ready for model input.
     """
-    # Select and preprocess relevant features from core metrics
-    processed_data = np.array([core_metrics['temperature'], core_metrics['utilization'], core_metrics['memory_latency']])
+    # Example for core0, adjust indices/names based on actual usage
+    processed_data = np.array([core_metrics['core0_base_freq'], core_metrics['core0_min_freq'],
+                               core_metrics['core0_max_freq'], core_metrics['c0_CoreTmp'],
+                               core_metrics['pkg0_PkgWatt']])
     return processed_data
 
 def predict_profile(processed_data):
@@ -77,12 +79,20 @@ def determine_profile_for_core(core):
     Returns:
         str: The optimal profile for the core.
     """
-    # Fetch real-time metrics for the core
+    # Refresh core stats to get updated values
+    core.refresh_stats()
+
+    # Gather real-time metrics
     core_metrics = {
         'current_frequency': core.curr_freq,  # Current frequency of the core
-        'power_consumption': core.cpu.power_consumption,  # Power consumption from the associated CPU object
-        'epp': core.epp,  # Energy performance preference of the core
+        'min_frequency': core.min_freq,  # Minimum frequency the core is allowed to run at
+        'max_frequency': core.max_freq,  # Maximum frequency the core is allowed to run at
+        'core_temp': core.thread_siblings[0].temperature,  # Assuming temperature can be obtained from the first thread sibling
+        'power_consumption': core.cpu.power_consumption  # Power consumption from the associated CPU object
     }
+
+    # Note: The 'core_temp' attribute is hypothetical as the pwr module documentation does not specify a direct way to obtain core temperature.
+    # We might need to use an external tool or library to get the core temperature.
 
     # Preprocess data
     processed_data = preprocess_data(core_metrics)
