@@ -15,6 +15,18 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
 
     # Load and preprocess the data
     df = pd.read_csv('./data/MLC_Idle_Memory_Latency_Local_Random.csv')
+    
+    # If 'DateTime' column exists, convert it to datetime and extract features
+    if 'DateTime' in df.columns:
+        df['DateTime'] = pd.to_datetime(df['DateTime'])
+        df['Year'] = df['DateTime'].dt.year
+        df['Month'] = df['DateTime'].dt.month
+        df['Day'] = df['DateTime'].dt.day
+        df['Hour'] = df['DateTime'].dt.hour
+        df['Minute'] = df['DateTime'].dt.minute
+        df['Second'] = df['DateTime'].dt.second
+        # Now you can drop the original 'DateTime' column
+        df.drop(columns=['DateTime'], inplace=True)
 
     # Selecting relevant features and the target
     input_features = df.drop(columns=['MLC_Idle_Memory_Latency_Local_Random'])
