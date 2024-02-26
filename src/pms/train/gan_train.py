@@ -27,6 +27,13 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
         df['Second'] = df['DateTime'].dt.second
         # Now you can drop the original 'DateTime' column
         df.drop(columns=['DateTime'], inplace=True)
+        
+    # Ensure all features are numeric, exclude non-numeric
+    numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
+    non_numeric_columns = set(df.columns) - set(numeric_columns) - {'MLC_Idle_Memory_Latency_Local_Random'}
+    if non_numeric_columns:
+        print(f"Excluding non-numeric columns: {non_numeric_columns}")
+        df.drop(columns=non_numeric_columns, inplace=True)
 
     # Selecting relevant features and the target
     input_features = df.drop(columns=['MLC_Idle_Memory_Latency_Local_Random'])
