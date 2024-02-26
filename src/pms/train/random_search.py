@@ -7,16 +7,26 @@ hyperparams_space = {
     'batch_size': [16, 32, 64],
     'learning_rate': [1e-4, 1e-3, 1e-2],
     'beta1': [0.1, 0.5, 0.9],
-    'generator_first_layer_size': [64, 128, 256],
-    'generator_second_layer_size': [64, 128, 256],
-    'discriminator_first_layer_size': [64, 128, 256],
-    'discriminator_second_layer_size': [64, 128, 256],
+    'generator': {
+        'first_layer_size': [64, 128, 256],
+        'second_layer_size': [64, 128, 256],
+    },
+    'discriminator': {
+        'first_layer_size': [64, 128, 256],
+        'second_layer_size': [64, 128, 256],
+    },
     'epochs': [5000, 10000, 15000],  # Reduced for quicker iterations during hyperparameter search
 }
 
 # Function to generate a random configuration
 def random_config(space):
-    return {param: random.choice(values) for param, values in space.items()}
+    config = {}
+    for param, values in space.items():
+        if isinstance(values, dict):
+            config[param] = random_config(values)  # Recursive call for nested dictionaries
+        else:
+            config[param] = random.choice(values)
+    return config
 
 # Number of configurations to try
 num_configs = 10
@@ -38,7 +48,6 @@ for _ in range(num_configs):
     performance = train_gan(config)
 
     # Evaluate the performance and update the best configuration
-    # (This part depends on how you evaluate the GAN's performance; you might need to modify train_gan to return a performance metric)
     if performance < best_performance:
         best_performance = performance
         best_config = config
