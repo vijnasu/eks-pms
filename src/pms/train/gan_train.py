@@ -74,6 +74,10 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     # Loss function
     adversarial_loss = nn.BCELoss()
 
+    # Initialize lists to track losses
+    d_losses = []
+    g_losses = []
+
     # Training loop
     for epoch in range(config['epochs']):
         for i, (features, targets) in enumerate(dataloader):
@@ -95,12 +99,18 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
             d_loss = (real_loss + fake_loss) / 2
             d_loss.backward()
             optimizer_D.step()
+            
+            d_losses.append(d_loss.item())
+            g_losses.append(g_loss.item())
+            
+    # Evaluate performance based on the average of the last few losses
+    # You can adjust the range based on how stable the losses are
+    avg_d_loss = np.mean(d_losses[-100:])  # Average of the last 100 discriminator losses
+    avg_g_loss = np.mean(g_losses[-100:])  # Average of the last 100 generator losses
 
-        # Print progress
-        if epoch % 1000 == 0 or epoch == config['epochs'] - 1:
-            print(f"Epoch: {epoch} | D Loss: {d_loss.item()} | G Loss: {g_loss.item()}")
+    # Combine the losses to form a simple performance metric (lower is better)
+    # This is a simple metric; you might need to adjust it based on your specific needs
+    performance_metric = (avg_d_loss + avg_g_loss) / 2
 
-    # Save the trained models
-    torch.save(generator.state_dict(), config['gen_model_path'])
-    torch.save(discriminator.state_dict(), config['dis_model_path'])
-    print("Trained models have been saved.")
+    # Return the performance metric
+    return performance_metric
