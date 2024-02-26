@@ -19,7 +19,6 @@ df_idle_random = pd.read_csv('./data/MLC_Idle_Memory_Latency_Local_Random.csv')
 features = df_idle_random[['core0_base_freq', 'core0_min_freq', 'core0_max_freq', 'c0_CoreTmp', 'pkg0_PkgWatt']]
 features_scaled = StandardScaler().fit_transform(features)
 
-
 # Convert scaled features to PyTorch tensors
 tensor_data = torch.Tensor(features_scaled)
 dataset = TensorDataset(tensor_data)
@@ -63,6 +62,10 @@ discriminator = Discriminator()
 optimizer_G = optim.Adam(generator.parameters(), lr=config['learning_rate'], betas=(config['beta1'], config['beta2']))
 optimizer_D = optim.Adam(discriminator.parameters(), lr=config['learning_rate'], betas=(config['beta1'], config['beta2']))
 
+# Initialize learning Rate Schedulers
+lr_scheduler_G = torch.optim.lr_scheduler.StepLR(optimizer_G, step_size=config['step_size'], gamma=config['gamma'])  # Example decay
+lr_scheduler_D = torch.optim.lr_scheduler.StepLR(optimizer_D, step_size=config['step_size'], gamma=config['gamma'])  # Example decay
+
 # Loss function
 adversarial_loss = nn.BCELoss()
 
@@ -87,6 +90,11 @@ for epoch in range(config['epochs']):
         d_loss = (real_loss + fake_loss) / 2
         d_loss.backward()
         optimizer_D.step()
+
+    # Update learning rate based on the scheduler
+    if epoch >= config['lr_decay_epoch']:
+        lr_scheduler_G.step()
+        lr_scheduler_D.step()
 
     # Print progress for every 1000 epochs or on the last epoch
     if epoch % 1000 == 0 or epoch == config['epochs'] - 1:
