@@ -14,9 +14,10 @@ import matplotlib.pyplot as plt
 #with open('gan_config.yaml', 'r') as file:
 #    config = yaml.safe_load(file)
 
+# Function to compute the gradient penalty for WGAN-GP
 def compute_gradient_penalty(D, real_samples, fake_samples):
     """Calculates the gradient penalty loss for WGAN GP"""
-    alpha = torch.rand(real_samples.size(0), 1).to(real_samples.device)  # Adjusted for 1D data
+    alpha = torch.rand(real_samples.size(0), 1).to(real_samples.device)
     interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
     d_interpolates = D(interpolates)
     fake = Variable(torch.Tensor(real_samples.shape[0], 1).fill_(1.0), requires_grad=False).to(real_samples.device)
@@ -28,13 +29,12 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
     return gradient_penalty
 
 # Define a function to encapsulate the training process
+# Define a function to encapsulate the GAN training process
 def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv'):
-
     print(colored("Starting GAN training...", "cyan"))
     
     # Load and preprocess the data
-    df = pd.read_csv('./data/MLC_Idle_Memory_Latency_Local_Random.csv')
-    
+    df = pd.read_csv(data_path)
     print(colored("Data loaded and preprocessing initiated...", "yellow"))
     
     # If 'DateTime' column exists, convert it to datetime and extract features
@@ -46,7 +46,6 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
         df['Hour'] = df['DateTime'].dt.hour
         df['Minute'] = df['DateTime'].dt.minute
         df['Second'] = df['DateTime'].dt.second
-        # Now you can drop the original 'DateTime' column
         df.drop(columns=['DateTime'], inplace=True)
         
     # Ensure all features are numeric, exclude non-numeric
@@ -80,7 +79,7 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
                 nn.LeakyReLU(config['leaky_relu_alpha']),
                 nn.Linear(config['generator']['first_layer_size'], config['generator']['second_layer_size']),
                 nn.LeakyReLU(config['leaky_relu_alpha']),
-                nn.Linear(config['generator']['second_layer_size'], output_dim)
+                nn.Linear(config['generator']['second_layer_size'], output_dim),
             )
 
         def forward(self, z):
@@ -95,16 +94,15 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
                 nn.LeakyReLU(config['leaky_relu_alpha']),
                 nn.Linear(config['discriminator']['first_layer_size'], config['discriminator']['second_layer_size']),
                 nn.LeakyReLU(config['leaky_relu_alpha']),
-                nn.Linear(config['discriminator']['second_layer_size'], 1)
-                # Removed Sigmoid activation
+                nn.Linear(config['discriminator']['second_layer_size'], 1),  # No sigmoid activation
             )
 
         def forward(self, data):
             return self.model(data)
 
     # Initialize models and optimizers
-    input_dim = input_features.shape[1] + target.shape[1]  # Adding target dimension for discriminator
-    output_dim = target.shape[1]  # Only target dimension for generator
+    input_dim = input_features.shape[1] + target.shape[1]
+    output_dim = target.shape[1]
     generator = Generator(config['latent_dim'], output_dim)
     discriminator = Discriminator(input_dim)
 
@@ -112,11 +110,8 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     optimizer_D = optim.Adam(discriminator.parameters(), lr=config['learning_rate'], betas=(config['beta1'], config['beta2']))
 
     # Initialize learning Rate Schedulers
-    lr_scheduler_G = torch.optim.lr_scheduler.StepLR(optimizer_G, step_size=config['step_size'], gamma=config['gamma'])  # Example decay
-    lr_scheduler_D = torch.optim.lr_scheduler.StepLR(optimizer_D, step_size=config['step_size'], gamma=config['gamma'])  # Example decay
-
-    # Loss function
-    adversarial_loss = nn.BCELoss()
+    lr_scheduler_G = torch.optim.lr_scheduler.StepLR(optimizer_G, step_size=config['step_size'], gamma=config['gamma'])
+    lr_scheduler_D = torch.optim.lr_scheduler.StepLR(optimizer_D, step_size=config['step_size'], gamma=config['gamma'])
 
     print(colored("Models initialized. Starting training loop...", "green"))
     
@@ -124,56 +119,66 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     d_losses = []
     g_losses = []
 
-    # Training loop with gradient clipping and dynamic LR scheduler update
-    
     for epoch in range(config['epochs']):
         for i, (features, targets) in enumerate(dataloader):
-            # Train Discriminator
+            # Configure input
+            real_imgs = torch.cat((features, targets), 1)
+
+            # ---------------------
+            #  Train Discriminator
+            # ---------------------
             optimizer_D.zero_grad()
 
-            # Generate a batch of images
+            # Sample noise as generator input
             z = torch.randn(features.size(0), config['latent_dim'])
-            generated_targets = generator(z)
+
+            # Generate a batch of images
+            fake_imgs = generator(z)
+            fake_imgs = torch.cat((features, fake_imgs), 1)
 
             # Real images
-            real_loss = discriminator(torch.cat((features, targets), 1))
+            real_validity = discriminator(real_imgs)
             # Fake images
-            fake_loss = discriminator(torch.cat((features, generated_targets.detach()), 1))
+            fake_validity = discriminator(fake_imgs.detach())
             # Gradient penalty
-            gradient_penalty = compute_gradient_penalty(discriminator, torch.cat((features, targets), 1).data, torch.cat((features, generated_targets), 1).data)
+            gradient_penalty = compute_gradient_penalty(discriminator, real_imgs.data, fake_imgs.data)
             # Discriminator loss
-            d_loss = -torch.mean(real_loss) + torch.mean(fake_loss) + config['lambda_gp'] * gradient_penalty
+            d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + config['lambda_gp'] * gradient_penalty
 
             d_loss.backward()
             optimizer_D.step()
 
-            # Train the generator every n_critic iterations
-            if i % config['n_critic'] == 0:
-                optimizer_G.zero_grad()
+            optimizer_G.zero_grad()
 
+            # Train the generator every n_critic steps
+            if i % config['n_critic'] == 0:
+                # -----------------
+                #  Train Generator
+                # -----------------
                 # Generate a batch of images
-                generated_targets = generator(z)
-                # Generator loss
-                g_loss = -torch.mean(discriminator(torch.cat((features, generated_targets), 1)))
+                gen_imgs = generator(z)
+                gen_imgs = torch.cat((features, gen_imgs), 1)
+                # Loss measures generator's ability to fool the discriminator
+                g_loss = -torch.mean(discriminator(gen_imgs))
 
                 g_loss.backward()
                 optimizer_G.step()
 
-            # Logging
-            if i % 100 == 0:
-                print(colored(f"Batch {i} | Epoch: {epoch} | D Loss: {d_loss.item()} | G Loss: {g_loss.item()}", "blue"))
+                print(colored(f"Epoch {epoch} | Batch {i} | D Loss: {d_loss.item()} | G Loss: {g_loss.item()}", "blue"))
 
-        # Epoch-level logging
-        if epoch % 100 == 0:
-            print(colored(f"Epoch {epoch} | Avg D Loss: {np.mean(d_losses[-100:])} | Avg G Loss: {np.mean(g_losses[-100:])}", "magenta"))
+        d_losses.append(d_loss.item())
+        g_losses.append(g_loss.item())
+
+        # Update learning rate schedulers
+        lr_scheduler_G.step()
+        lr_scheduler_D.step()
 
     print(colored("Training completed!", "cyan"))
 
-    # Performance evaluation
-    avg_d_loss = np.mean(d_losses[-100:])  # Adjust the range as needed
-    avg_g_loss = np.mean(g_losses[-100:])  # Adjust the range as needed
+    # Evaluate performance
+    avg_d_loss = np.mean(d_losses[-100:])
+    avg_g_loss = np.mean(g_losses[-100:])
     performance_metric = (avg_d_loss + avg_g_loss) / 2
     print(colored(f"Final Performance Metric: {performance_metric}", "magenta"))
 
-    # Return the performance metric for further evaluation if needed
     return performance_metric
