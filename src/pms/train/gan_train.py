@@ -113,8 +113,8 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     # Training loop with gradient clipping and dynamic LR scheduler update
     for epoch in range(config['epochs']):
         for i, (features, targets) in enumerate(dataloader):
-            valid = torch.ones((features.size(0), 1), requires_grad=False)
-            fake = torch.zeros((features.size(0), 1), requires_grad=False)
+            valid = torch.ones((features.size(0), 1), requires_grad=False) * 0.9
+            fake = torch.zeros((features.size(0), 1), requires_grad=False) * 0.1
 
             # -----------------
             #  Train Generator
@@ -129,9 +129,7 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
 
             # Loss measures generator's ability to fool the discriminator
             g_loss = adversarial_loss(discriminator(torch.cat((features, generated_targets), 1)), valid)
-
             g_loss.backward()
-            torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1)  # Gradient clipping for the generator
             optimizer_G.step()
 
             # ---------------------
@@ -143,15 +141,9 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
             real_loss = adversarial_loss(discriminator(torch.cat((features, targets), 1)), valid)
             fake_loss = adversarial_loss(discriminator(torch.cat((features, generated_targets.detach()), 1)), fake)
             d_loss = (real_loss + fake_loss) / 2
-
             d_loss.backward()
-            torch.nn.utils.clip_grad_norm_(discriminator.parameters(), max_norm=1)  # Gradient clipping for the discriminator
             optimizer_D.step()
 
-            # Update learning rate based on the scheduler
-            lr_scheduler_G.step()
-            lr_scheduler_D.step()
-            
             # Logging
             if i % 100 == 0:  # Log every 100 batches
                 print(colored(f"Batch {i} | Epoch: {epoch} | D Loss: {d_loss.item()} | G Loss: {g_loss.item()}", "blue"))
