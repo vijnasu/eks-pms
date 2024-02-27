@@ -124,21 +124,32 @@ def adjust_cpu_uncore_configuration(cpu):
     cpu.uncore_max_freq = cpu.uncore_hw_max
     print(colored(f"CPU {cpu.cpu_id}: Uncore Min freq set to {cpu.uncore_min_freq}, Uncore Max freq set to {cpu.uncore_max_freq}", "cyan"))
     
-def commit_changes_concurrently(cores):
-    threads = []
-    
+def commit_core_changes(cores):
+    # Ensure 'cores' is always treated as a list, even if it's a single Core object
     if not isinstance(cores, (list, tuple, set)):
-        cores = [cores]  # Make it a list if it's a single Core object
+        cores = [cores]  # Wrap single Core object in a list
 
     for core in cores:
-        thread = threading.Thread(target=commit_core_changes, args=(core,))
+        core.commit()
+        print(colored(f"Changes committed for Core {core.core_id}.", "green"))
+
+def commit_changes_concurrently(cores):
+    threads = []
+
+    # Ensure 'cores' is a list for consistency in threading
+    if not isinstance(cores, (list, tuple, set)):
+        cores = [cores]  # Wrap single Core object in a list
+
+    for core in cores:
+        # Pass each 'core' as a list containing a single Core object to ensure compatibility
+        thread = threading.Thread(target=commit_core_changes, args=([core],))  # Note the extra brackets around 'core'
         threads.append(thread)
         thread.start()
 
     for thread in threads:
         thread.join()
     print(colored("Concurrently committed changes for all cores.", "green"))
-
+    
 def intelligent_apply_profiles(cores, default_profile="default"):
     for core in cores:
         # Placeholder for intelligent decision-making, e.g., based on core usage or temperature
@@ -157,11 +168,6 @@ def staggered_refresh_stats(system, cpus, cores):
             core.refresh_stats()  # Refresh core-specific stats, possibly staggered
     print(colored("Staggered refresh of stats completed.", "green"))
     
-def commit_core_changes(cores):
-    for core in cores:
-        core.commit()
-        print(colored(f"Changes committed for Core {core.core_id}.", "green"))
-
 def commit_system_changes(system):
     system.commit()
     print(colored("Changes committed for the entire system.", "green"))
