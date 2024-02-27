@@ -3,6 +3,8 @@ import sys
 import subprocess
 import threading
 from intelligent_profile_manager import intelligent_apply_profiles
+from rich.console import Console
+from rich.table import Table
 
 def check_and_install_pwr():
     try:
@@ -34,10 +36,22 @@ def adjust_cpu_uncore_configuration(cpu):
     print(colored(f"CPU {cpu.cpu_id}: Uncore Min freq set to {cpu.uncore_min_freq}, Uncore Max freq set to {cpu.uncore_max_freq}", "cyan"))
 
 def batch_adjust_core_configurations(cores):
-    for core in cores:
+    console = Console()
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Core ID", style="dim", width=12)
+    table.add_column("Minimum Frequency", justify="right")
+    table.add_column("Maximum Frequency", justify="right")
+    
+    for i, core in enumerate(cores):
+        # Assuming 'core' is an object with attributes you can modify
         core.min_freq = core.lowest_freq
         core.max_freq = core.highest_freq
-    print(colored("Batch adjusted configurations for all cores.", "cyan"))
+
+        # Add a row for each core showing the adjusted configurations
+        table.add_row(f"Core {i+1}", str(core.min_freq), str(core.max_freq))
+
+    console.print("Batch adjusted configurations for all cores:", style="cyan")
+    console.print(table)
 
 def batch_adjust_cpu_uncore_configurations(cpus):
     for cpu in cpus:
