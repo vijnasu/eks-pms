@@ -1,0 +1,21 @@
+latent_dim: 100
+generator:
+  first_layer_size: 128
+  second_layer_size: 64
+discriminator:
+  first_layer_size: 64
+  second_layer_size: 32
+epochs: 18000  # Adjusted based on where the training starts to collapse
+batch_size: 16 # Reduced for more frequent updates
+learning_rate: 0.00005  # reduced to provide more stable, albeit potentially slower, learning.
+beta1: 0.1  # adjusted to potentially provide a more stable update dynamic.
+beta2: 0.999
+leaky_relu_alpha: 0.2
+lr_decay_epoch: 10000  # New parameter, epoch to start decaying learning rate
+step_size: 1000
+gamma: 0.95
+gen_model_path: './models/generator_state_dict.pth'
+dis_model_path: './models/discriminator_state_dict.pth'
+prediction_threshold: 0.5  # An example default value; adjust based on model and use case
+lambda_gp: 10
+n_critic: 5

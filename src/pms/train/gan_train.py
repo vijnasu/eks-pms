@@ -9,10 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from torch.autograd import Variable, grad
 from termcolor import colored
 import matplotlib.pyplot as plt
-
-# Load configuration
-#with open('gan_config.yaml', 'r') as file:
-#    config = yaml.safe_load(file)
+import os
 
 # Function to compute the gradient penalty for WGAN-GP
 def compute_gradient_penalty(D, real_samples, fake_samples):
@@ -32,11 +29,11 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
 # Define a function to encapsulate the GAN training process
 def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv'):
     print(colored("Starting GAN training...", "cyan"))
-    
+
     # Load and preprocess the data
     df = pd.read_csv(data_path)
     print(colored("Data loaded and preprocessing initiated...", "yellow"))
-    
+
     # If 'DateTime' column exists, convert it to datetime and extract features
     if 'DateTime' in df.columns:
         df['DateTime'] = pd.to_datetime(df['DateTime'])
@@ -47,7 +44,7 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
         df['Minute'] = df['DateTime'].dt.minute
         df['Second'] = df['DateTime'].dt.second
         df.drop(columns=['DateTime'], inplace=True)
-        
+
     # Ensure all features are numeric, exclude non-numeric
     numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
     non_numeric_columns = set(df.columns) - set(numeric_columns) - {'MLC_Idle_Memory_Latency_Local_Random'}
@@ -173,7 +170,20 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
         lr_scheduler_G.step()
         lr_scheduler_D.step()
 
+        if epoch % config['save_interval'] == 0:  # save_interval can be defined as per your preference
+            torch.save(generator.state_dict(), os.path.join('models', f'generator_epoch_{epoch}.pth'))
+            torch.save(discriminator.state_dict(), os.path.join('models', f'discriminator_epoch_{epoch}.pth'))
+            print(f"Checkpoint saved at epoch {epoch}")
+
     print(colored("Training completed!", "cyan"))
+
+    if not os.path.isdir('models'):
+        os.makedirs('models')  # Create directory for saving models if it doesn't exist
+
+    # Save the final models
+    torch.save(generator.state_dict(), os.path.join('models', 'generator_final.pth'))
+    torch.save(discriminator.state_dict(), os.path.join('models', 'discriminator_final.pth'))
+    print("Final models saved!")
 
     # Evaluate performance
     avg_d_loss = np.mean(d_losses[-100:])
@@ -182,3 +192,18 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     print(colored(f"Final Performance Metric: {performance_metric}", "magenta"))
 
     return performance_metric
+
+# main function
+def main():
+    # Load configuration
+    with open('gan_config_final.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+
+    # Load and preprocess the data
+    df_idle_random = pd.read_csv('./data/MLC_Idle_Memory_Latency_Local_Random.csv')
+
+    # Train the GAN with the generated configuration
+    performance = train_gan(config)
+
+if __name__ == "__main__":
+    main()
