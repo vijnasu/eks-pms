@@ -7,6 +7,71 @@ from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
 
+class FrequencyConfigurator:
+    def __init__(self, regions, type_name):
+        self.regions = regions
+        self.type_name = type_name
+        self.console = Console()
+
+    def display_current_configurations(self):
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column(f"{self.type_name} ID", style="dim", width=12)
+        table.add_column("Current Frequency", justify="right")
+        table.add_column("Minimum Frequency", justify="right")
+        table.add_column("Maximum Frequency", justify="right")
+
+        for region in self.regions:
+            if region.online:
+                table.add_row(
+                    str(region.id),
+                    f"{region.curr_freq} MHz",
+                    f"{region.min_freq} MHz",
+                    f"{region.max_freq} MHz"
+                )
+            else:
+                table.add_row(str(region.id), "Offline", "Offline", "Offline")
+
+        self.console.print(f"Current {self.type_name} Configurations:", style="bold magenta")
+        self.console.print(table)
+
+    def batch_adjust_configurations(self):
+        # Display current configurations before adjustments
+        self.display_current_configurations()
+
+        # Ask for new frequencies only once
+        new_min_freq = Prompt.ask(f"Enter new minimum frequency (MHz) for all {self.type_name.lower()} regions", default=str(self.regions[0].min_freq))
+        new_max_freq = Prompt.ask(f"Enter new maximum frequency (MHz) for all {self.type_name.lower()} regions", default=str(self.regions[0].max_freq))
+
+        for region in self.regions:
+            if region.online:
+                region.min_freq = int(new_min_freq)
+                region.max_freq = int(new_max_freq)
+
+        # Display configurations after adjustments
+        self.console.print(f"\n[bold cyan]After Adjustments:[/bold cyan]")
+        self.display_current_configurations()
+
+class Uncore:
+    def __init__(self, uncore_id, min_freq, max_freq, curr_freq):
+        self.uncore_id = uncore_id
+        self.min_freq = min_freq
+        self.max_freq = max_freq
+        self.curr_freq = curr_freq
+
+def initialize_uncore_regions(cpus):
+    uncore_regions = []
+    for cpu in cpus:
+        uncore_id = cpu.cpu_id
+        min_freq = cpu.uncore_hw_min
+        max_freq = cpu.uncore_hw_max
+        curr_freq = cpu.uncore_freq
+
+        # Create and add the Uncore object to the list
+        uncore_region = Uncore(uncore_id, min_freq, max_freq, curr_freq)
+        uncore_regions.append(uncore_region)
+
+    return uncore_regions
+
 def check_and_install_pwr():
     try:
         import pwr
@@ -35,54 +100,7 @@ def adjust_cpu_uncore_configuration(cpu):
     cpu.uncore_min_freq = cpu.uncore_hw_min
     cpu.uncore_max_freq = cpu.uncore_hw_max
     print(colored(f"CPU {cpu.cpu_id}: Uncore Min freq set to {cpu.uncore_min_freq}, Uncore Max freq set to {cpu.uncore_max_freq}", "cyan"))
-
-def display_current_core_configurations(cores):
-    console = Console()
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Core ID", style="dim", width=12)
-    table.add_column("Current Frequency", justify="right")
-    table.add_column("Minimum Frequency", justify="right")
-    table.add_column("Maximum Frequency", justify="right")
-
-    for core in cores:
-        if core.online:
-            table.add_row(
-                str(core.core_id),
-                str(core.curr_freq) + " MHz",
-                str(core.min_freq) + " MHz",
-                str(core.max_freq) + " MHz"
-            )
-        else:
-            table.add_row(str(core.core_id), "Offline", "Offline", "Offline")
-
-    console.print("Current Core Configurations:", style="bold magenta")
-    console.print(table)
-
-def batch_adjust_core_configurations(cores):
-    console = Console()
-
-    # Display current configurations before adjustments
-    display_current_core_configurations(cores)
-
-    for core in cores:
-        if core.online:
-            new_min_freq = Prompt.ask(f"Enter new minimum frequency (MHz) for Core {core.core_id} (Current: {core.min_freq} MHz)", default=str(core.min_freq))
-            new_max_freq = Prompt.ask(f"Enter new maximum frequency (MHz) for Core {core.core_id} (Current: {core.max_freq} MHz)", default=str(core.max_freq))
-
-            core.min_freq = int(new_min_freq)
-            core.max_freq = int(new_max_freq)
-
-    # Display configurations after adjustments
-    console.print("\n[bold cyan]After Adjustments:[/bold cyan]")
-    display_current_core_configurations(cores)
-
     
-def batch_adjust_cpu_uncore_configurations(cpus):
-    for cpu in cpus:
-        cpu.uncore_min_freq = cpu.uncore_hw_min
-        cpu.uncore_max_freq = cpu.uncore_hw_max
-    print(colored("Batch adjusted uncore configurations for all CPUs.", "cyan"))
-
 def commit_changes_concurrently(cores):
     threads = []
     for core in cores:
@@ -178,9 +196,12 @@ def main():
         choice = input(colored("Enter your choice: ", "green"))
 
         if choice == "1":
-            batch_adjust_core_configurations(cores)
+            core_configurator = FrequencyConfigurator(cores, "Core")
+            core_configurator.batch_adjust_configurations()
         elif choice == "2":
-            batch_adjust_cpu_uncore_configurations(cpus)
+            uncore_regions = initialize_uncore_regions(cpus)
+            uncore_configurator = FrequencyConfigurator(uncore_regions, "Uncore")
+            uncore_configurator.batch_adjust_configurations()
         elif choice == "3":
             commit_changes_concurrently(cores)
         elif choice == "4":
