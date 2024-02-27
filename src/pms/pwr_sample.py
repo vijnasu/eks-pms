@@ -8,8 +8,8 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 class FrequencyConfigurator:
-    def __init__(self, regions, type_name):
-        self.regions = regions
+    def __init__(self, cores, type_name):
+        self.cores = cores  # Assuming 'cores' is a list of Core instances
         self.type_name = type_name
         self.console = Console()
 
@@ -20,16 +20,16 @@ class FrequencyConfigurator:
         table.add_column("Minimum Frequency", justify="right")
         table.add_column("Maximum Frequency", justify="right")
 
-        for region in self.regions:
-            if region.online:
+        for core in self.cores:
+            if core.online:
                 table.add_row(
-                    str(region.cpu_id),
-                    f"{region.curr_freq} MHz",
-                    f"{region.min_freq} MHz",
-                    f"{region.max_freq} MHz"
+                    str(core.core_id),
+                    f"{core.curr_freq} MHz" if core.curr_freq is not None else "N/A",
+                    f"{core.min_freq} MHz" if core.min_freq is not None else "N/A",
+                    f"{core.max_freq} MHz" if core.max_freq is not None else "N/A"
                 )
             else:
-                table.add_row(str(region.id), "Offline", "Offline", "Offline")
+                table.add_row(str(core.core_id), "Offline", "Offline", "Offline")
 
         self.console.print(f"Current {self.type_name} Configurations:", style="bold magenta")
         self.console.print(table)
@@ -39,13 +39,13 @@ class FrequencyConfigurator:
         self.display_current_configurations()
 
         # Ask for new frequencies only once
-        new_min_freq = Prompt.ask(f"Enter new minimum frequency (MHz) for all {self.type_name.lower()} regions", default=str(self.regions[0].min_freq))
-        new_max_freq = Prompt.ask(f"Enter new maximum frequency (MHz) for all {self.type_name.lower()} regions", default=str(self.regions[0].max_freq))
+        new_min_freq = Prompt.ask(f"Enter new minimum frequency (MHz) for all {self.type_name.lower()} cores", default="N/A")
+        new_max_freq = Prompt.ask(f"Enter new maximum frequency (MHz) for all {self.type_name.lower()} cores", default="N/A")
 
-        for region in self.regions:
-            if region.online:
-                region.min_freq = int(new_min_freq)
-                region.max_freq = int(new_max_freq)
+        for core in self.cores:
+            if core.online:
+                core.min_freq = int(new_min_freq) if new_min_freq.isdigit() else core.min_freq
+                core.max_freq = int(new_max_freq) if new_max_freq.isdigit() else core.max_freq
 
         # Display configurations after adjustments
         self.console.print(f"\n[bold cyan]After Adjustments:[/bold cyan]")
