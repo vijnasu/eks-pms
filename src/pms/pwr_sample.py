@@ -4,6 +4,7 @@ import subprocess
 import threading
 from intelligent_profile_manager import intelligent_apply_profiles
 from rich.console import Console
+from rich.prompt import Prompt
 from rich.table import Table
 
 def check_and_install_pwr():
@@ -41,18 +42,28 @@ def batch_adjust_core_configurations(cores):
     table.add_column("Core ID", style="dim", width=12)
     table.add_column("Minimum Frequency", justify="right")
     table.add_column("Maximum Frequency", justify="right")
-    
-    for i, core in enumerate(cores):
-        # Assuming 'core' is an object with attributes you can modify
-        core.min_freq = core.lowest_freq
-        core.max_freq = core.highest_freq
+    table.add_column("Adjustment Status", justify="center")
 
-        # Add a row for each core showing the adjusted configurations
-        table.add_row(f"Core {i+1}", str(core.min_freq), str(core.max_freq))
+    for core in cores:
+        # Check if the core is online before proceeding
+        if core.online:
+            # Prompt user for new min and max frequencies
+            new_min_freq = Prompt.ask(f"Enter new minimum frequency for Core {core.core_id} (Current: {core.lowest_freq})", default=str(core.lowest_freq))
+            new_max_freq = Prompt.ask(f"Enter new maximum frequency for Core {core.core_id} (Current: {core.highest_freq})", default=str(core.highest_freq))
+
+            # Update core frequencies
+            core.min_freq = int(new_min_freq)
+            core.max_freq = int(new_max_freq)
+
+            # Add a row to the table for this core
+            table.add_row(str(core.core_id), new_min_freq, new_max_freq, "[green]Adjusted[/green]")
+        else:
+            # Core is offline, skip adjustments
+            table.add_row(str(core.core_id), "-", "-", "[red]Offline[/red]")
 
     console.print("Batch adjusted configurations for all cores:", style="cyan")
     console.print(table)
-
+    
 def batch_adjust_cpu_uncore_configurations(cpus):
     for cpu in cpus:
         cpu.uncore_min_freq = cpu.uncore_hw_min
