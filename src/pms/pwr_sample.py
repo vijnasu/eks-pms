@@ -23,7 +23,7 @@ class FrequencyConfigurator:
         for region in self.regions:
             if region.online:
                 table.add_row(
-                    str(region.id),
+                    str(region.cpu_id),
                     f"{region.curr_freq} MHz",
                     f"{region.min_freq} MHz",
                     f"{region.max_freq} MHz"
