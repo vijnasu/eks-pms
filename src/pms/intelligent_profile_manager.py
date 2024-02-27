@@ -7,7 +7,7 @@ import yaml
 import os
 
 # Load configuration
-with open('gan_config_final.yaml', 'r') as file:
+with open('./train/gan_config_final.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 class Generator(nn.Module):
@@ -26,11 +26,11 @@ class Generator(nn.Module):
         return self.model(z)
 
 # Initialize and load the generator model
-generator = Generator(config, 314, 1)
+generator = Generator(config, 150, 1)
 
 # Load the saved model
 
-generator.load_state_dict(torch.load(config['gen_model_path']))
+generator.load_state_dict(torch.load('./train/models/generator_final.pth'))
 generator.eval()  # Set the model to evaluation mode
 
 def preprocess_data(core_metrics):
