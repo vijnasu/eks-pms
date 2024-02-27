@@ -8,9 +8,10 @@ from rich.prompt import Prompt
 from rich.table import Table
 
 class FrequencyConfigurator:
-    def __init__(self, cores, type_name):
-        self.cores = cores  # Assuming 'cores' is a list of Core instances
+    def __init__(self, units, type_name, is_uncore=False):
+        self.units = units  # 'units' can be a list of Core or CPU instances, depending on the context
         self.type_name = type_name
+        self.is_uncore = is_uncore  # Flag to indicate if we are configuring uncore frequencies
         self.console = Console()
 
     def display_current_configurations(self):
@@ -20,16 +21,28 @@ class FrequencyConfigurator:
         table.add_column("Minimum Frequency", justify="right")
         table.add_column("Maximum Frequency", justify="right")
 
-        for core in self.cores:
-            if core.online:
-                table.add_row(
-                    str(core.core_id),
-                    f"{core.curr_freq} MHz" if core.curr_freq is not None else "N/A",
-                    f"{core.min_freq} MHz" if core.min_freq is not None else "N/A",
-                    f"{core.max_freq} MHz" if core.max_freq is not None else "N/A"
-                )
+        for unit in self.units:
+            # For uncore, we only have one set of frequencies per CPU, not per core
+            if self.is_uncore:
+                if unit._uncore_kernel_avail:  # Check if uncore frequencies are available
+                    table.add_row(
+                        str(unit.cpu_id),
+                        f"{unit.uncore_freq} MHz" if unit.uncore_freq is not None else "N/A",
+                        f"{unit.uncore_min_freq} MHz" if unit.uncore_min_freq is not None else "N/A",
+                        f"{unit.uncore_max_freq} MHz" if unit.uncore_max_freq is not None else "N/A"
+                    )
+                else:
+                    table.add_row(str(unit.cpu_id), "N/A", "N/A", "N/A")
             else:
-                table.add_row(str(core.core_id), "Offline", "Offline", "Offline")
+                if unit.online:
+                    table.add_row(
+                        str(unit.core_id),
+                        f"{unit.curr_freq} MHz" if unit.curr_freq is not None else "N/A",
+                        f"{unit.min_freq} MHz" if unit.min_freq is not None else "N/A",
+                        f"{unit.max_freq} MHz" if unit.max_freq is not None else "N/A"
+                    )
+                else:
+                    table.add_row(str(unit.core_id), "Offline", "Offline", "Offline")
 
         self.console.print(f"Current {self.type_name} Configurations:", style="bold magenta")
         self.console.print(table)
@@ -39,13 +52,23 @@ class FrequencyConfigurator:
         self.display_current_configurations()
 
         # Ask for new frequencies only once
-        new_min_freq = Prompt.ask(f"Enter new minimum frequency (MHz) for all {self.type_name.lower()} cores", default="N/A")
-        new_max_freq = Prompt.ask(f"Enter new maximum frequency (MHz) for all {self.type_name.lower()} cores", default="N/A")
+        if self.is_uncore:
+            prompt_text_min = f"Enter new minimum uncore frequency (MHz) for all CPUs"
+            prompt_text_max = f"Enter new maximum uncore frequency (MHz) for all CPUs"
+        else:
+            prompt_text_min = f"Enter new minimum frequency (MHz) for all {self.type_name.lower()} cores"
+            prompt_text_max = f"Enter new maximum frequency (MHz) for all {self.type_name.lower()} cores"
 
-        for core in self.cores:
-            if core.online:
-                core.min_freq = int(new_min_freq) if new_min_freq.isdigit() else core.min_freq
-                core.max_freq = int(new_max_freq) if new_max_freq.isdigit() else core.max_freq
+        new_min_freq = Prompt.ask(prompt_text_min, default="N/A")
+        new_max_freq = Prompt.ask(prompt_text_max, default="N/A")
+
+        for unit in self.units:
+            if self.is_uncore and unit._uncore_kernel_avail:
+                unit.uncore_min_freq = int(new_min_freq) if new_min_freq.isdigit() else unit.uncore_min_freq
+                unit.uncore_max_freq = int(new_max_freq) if new_max_freq.isdigit() else unit.uncore_max_freq
+            elif not self.is_uncore and unit.online:
+                unit.min_freq = int(new_min_freq) if new_min_freq.isdigit() else unit.min_freq
+                unit.max_freq = int(new_max_freq) if new_max_freq.isdigit() else unit.max_freq
 
         # Display configurations after adjustments
         self.console.print(f"\n[bold cyan]After Adjustments:[/bold cyan]")
