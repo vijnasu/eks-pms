@@ -1,3 +1,4 @@
+from pytest import console_main
 from termcolor import colored
 import sys
 import subprocess
@@ -6,6 +7,7 @@ from intelligent_profile_manager import intelligent_apply_profiles
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
+from rich.text import Text
 
 class FrequencyConfigurator:
     def __init__(self, units, type_name, is_uncore=False):
@@ -13,6 +15,13 @@ class FrequencyConfigurator:
         self.type_name = type_name
         self.is_uncore = is_uncore  # Flag to indicate if we are configuring uncore frequencies
         self.console = Console()
+        
+    def is_valid_frequency(self, freq, min_freq=400, max_freq=4700):
+        """Check if the frequency is within the valid range."""
+        if not freq.isdigit():
+            return False
+        freq = int(freq)
+        return min_freq <= freq <= max_freq
 
     def display_current_configurations(self):
         table = Table(show_header=True, header_style="bold magenta")
@@ -46,6 +55,30 @@ class FrequencyConfigurator:
 
         self.console.print(f"Current {self.type_name} Configurations:", style="bold magenta")
         self.console.print(table)
+        
+    def validate_frequency(self, input):
+        try:
+            freq = float(input)
+            
+            for unit in self.units:
+                # For uncore, we only have one set of frequencies per CPU, not per core
+                if self.is_uncore:
+                    if unit._uncore_kernel_avail:  # Check if uncore frequencies are available
+                        if 400 <= freq <= 4700:
+                            return True
+                        else:
+                            raise ValueError
+                    else:
+                        raise ValueError
+                else:
+                    if unit.online:
+                        if 400 <= freq <= 4700:
+                            return True
+                    else:
+                        raise ValueError
+        except ValueError:
+            self.console.print(Text("Invalid input. Please enter a value between 400 MHz and 4700 MHz.", style="red"))
+            return False
 
     def batch_adjust_configurations(self):
         # Display current configurations before adjustments
@@ -55,8 +88,8 @@ class FrequencyConfigurator:
         prompt_text_min = f"Enter new minimum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
         prompt_text_max = f"Enter new maximum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
 
-        new_min_freq = Prompt.ask(prompt_text_min, default="N/A")
-        new_max_freq = Prompt.ask(prompt_text_max, default="N/A")
+        new_min_freq = Prompt.ask(prompt_text_min, validate=self.validate_frequency)
+        new_max_freq = Prompt.ask(prompt_text_max, validate=self.validate_frequency)
 
         for unit in self.units:
             if self.is_uncore:
@@ -71,27 +104,6 @@ class FrequencyConfigurator:
         # Display configurations after adjustments
         self.console.print(f"\n[bold cyan]After Adjustments:[/bold cyan]")
         self.display_current_configurations()
-
-class Uncore:
-    def __init__(self, uncore_id, min_freq, max_freq, curr_freq):
-        self.uncore_id = uncore_id
-        self.min_freq = min_freq
-        self.max_freq = max_freq
-        self.curr_freq = curr_freq
-
-def initialize_uncore_regions(cpus):
-    uncore_regions = []
-    for cpu in cpus:
-        uncore_id = cpu.cpu_id
-        min_freq = cpu.uncore_hw_min
-        max_freq = cpu.uncore_hw_max
-        curr_freq = cpu.uncore_freq
-
-        # Create and add the Uncore object to the list
-        uncore_region = Uncore(uncore_id, min_freq, max_freq, curr_freq)
-        uncore_regions.append(uncore_region)
-
-    return uncore_regions
 
 def check_and_install_pwr():
     try:
