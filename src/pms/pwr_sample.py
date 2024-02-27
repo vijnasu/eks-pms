@@ -222,8 +222,8 @@ def main():
             core_configurator = FrequencyConfigurator(cores, "Core")
             core_configurator.batch_adjust_configurations()
         elif choice == "2":
-            uncore_regions = initialize_uncore_regions(cpus)
-            uncore_configurator = FrequencyConfigurator(uncore_regions, "Uncore")
+            #uncore_regions = initialize_uncore_regions(cpus)
+            uncore_configurator = FrequencyConfigurator(cores, "Uncore", True)
             uncore_configurator.batch_adjust_configurations()
         elif choice == "3":
             commit_changes_concurrently(cores)
