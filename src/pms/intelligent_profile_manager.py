@@ -4,27 +4,32 @@ from termcolor import colored
 import torch
 import torch.nn as nn
 import yaml
+import os
 
 # Load configuration
-with open('gan_config.yaml', 'r') as file:
+with open('gan_config_final.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 class Generator(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, input_dim, output_dim):
         super(Generator, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(config['latent_dim'], config['generator']['first_layer_size']),
+            nn.Linear(input_dim, config['generator']['first_layer_size']),
             nn.LeakyReLU(config['leaky_relu_alpha']),
             nn.Linear(config['generator']['first_layer_size'], config['generator']['second_layer_size']),
             nn.LeakyReLU(config['leaky_relu_alpha']),
-            nn.Linear(config['generator']['second_layer_size'], 3)  # Assuming 3 output features
+            nn.Linear(config['generator']['second_layer_size'], output_dim),
         )
+
 
     def forward(self, z):
         return self.model(z)
 
 # Initialize and load the generator model
-generator = Generator(config)
+generator = Generator(config, 314, 1)
+
+# Load the saved model
+
 generator.load_state_dict(torch.load(config['gen_model_path']))
 generator.eval()  # Set the model to evaluation mode
 
