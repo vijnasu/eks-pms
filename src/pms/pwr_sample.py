@@ -36,33 +36,46 @@ def adjust_cpu_uncore_configuration(cpu):
     cpu.uncore_max_freq = cpu.uncore_hw_max
     print(colored(f"CPU {cpu.cpu_id}: Uncore Min freq set to {cpu.uncore_min_freq}, Uncore Max freq set to {cpu.uncore_max_freq}", "cyan"))
 
-def batch_adjust_core_configurations(cores):
+def display_current_core_configurations(cores):
     console = Console()
-    table = Table(show_header=True, header_style="bold cyan")
+    table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Core ID", style="dim", width=12)
+    table.add_column("Current Frequency", justify="right")
     table.add_column("Minimum Frequency", justify="right")
     table.add_column("Maximum Frequency", justify="right")
-    table.add_column("Adjustment Status", justify="center")
 
     for core in cores:
-        # Check if the core is online before proceeding
         if core.online:
-            # Prompt user for new min and max frequencies
-            new_min_freq = Prompt.ask(f"Enter new minimum frequency for Core {core.core_id} (Current: {core.lowest_freq})", default=str(core.lowest_freq))
-            new_max_freq = Prompt.ask(f"Enter new maximum frequency for Core {core.core_id} (Current: {core.highest_freq})", default=str(core.highest_freq))
+            table.add_row(
+                str(core.core_id),
+                str(core.curr_freq) + " MHz",
+                str(core.min_freq) + " MHz",
+                str(core.max_freq) + " MHz"
+            )
+        else:
+            table.add_row(str(core.core_id), "Offline", "Offline", "Offline")
 
-            # Update core frequencies
+    console.print("Current Core Configurations:", style="bold magenta")
+    console.print(table)
+
+def batch_adjust_core_configurations(cores):
+    console = Console()
+
+    # Display current configurations before adjustments
+    display_current_core_configurations(cores)
+
+    for core in cores:
+        if core.online:
+            new_min_freq = Prompt.ask(f"Enter new minimum frequency (MHz) for Core {core.core_id} (Current: {core.min_freq} MHz)", default=str(core.min_freq))
+            new_max_freq = Prompt.ask(f"Enter new maximum frequency (MHz) for Core {core.core_id} (Current: {core.max_freq} MHz)", default=str(core.max_freq))
+
             core.min_freq = int(new_min_freq)
             core.max_freq = int(new_max_freq)
 
-            # Add a row to the table for this core
-            table.add_row(str(core.core_id), new_min_freq, new_max_freq, "[green]Adjusted[/green]")
-        else:
-            # Core is offline, skip adjustments
-            table.add_row(str(core.core_id), "-", "-", "[red]Offline[/red]")
+    # Display configurations after adjustments
+    console.print("\n[bold cyan]After Adjustments:[/bold cyan]")
+    display_current_core_configurations(cores)
 
-    console.print("Batch adjusted configurations for all cores:", style="cyan")
-    console.print(table)
     
 def batch_adjust_cpu_uncore_configurations(cpus):
     for cpu in cpus:
