@@ -52,23 +52,21 @@ class FrequencyConfigurator:
         self.display_current_configurations()
 
         # Ask for new frequencies only once
-        if self.is_uncore:
-            prompt_text_min = f"Enter new minimum uncore frequency (MHz) for all CPUs"
-            prompt_text_max = f"Enter new maximum uncore frequency (MHz) for all CPUs"
-        else:
-            prompt_text_min = f"Enter new minimum frequency (MHz) for all {self.type_name.lower()} cores"
-            prompt_text_max = f"Enter new maximum frequency (MHz) for all {self.type_name.lower()} cores"
+        prompt_text_min = f"Enter new minimum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
+        prompt_text_max = f"Enter new maximum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
 
         new_min_freq = Prompt.ask(prompt_text_min, default="N/A")
         new_max_freq = Prompt.ask(prompt_text_max, default="N/A")
 
         for unit in self.units:
-            if self.is_uncore and unit._uncore_kernel_avail:
-                unit.uncore_min_freq = int(new_min_freq) if new_min_freq.isdigit() else unit.uncore_min_freq
-                unit.uncore_max_freq = int(new_max_freq) if new_max_freq.isdigit() else unit.uncore_max_freq
-            elif not self.is_uncore and unit.online:
-                unit.min_freq = int(new_min_freq) if new_min_freq.isdigit() else unit.min_freq
-                unit.max_freq = int(new_max_freq) if new_max_freq.isdigit() else unit.max_freq
+            if self.is_uncore:
+                if hasattr(unit, '_uncore_kernel_avail') and unit._uncore_kernel_avail:  # Ensure attribute exists and uncore is available
+                    unit.uncore_min_freq = int(new_min_freq) if new_min_freq.isdigit() else unit.uncore_min_freq
+                    unit.uncore_max_freq = int(new_max_freq) if new_max_freq.isdigit() else unit.uncore_max_freq
+            else:
+                if hasattr(unit, 'online') and unit.online:  # Ensure 'online' attribute exists and core is online
+                    unit.min_freq = int(new_min_freq) if new_min_freq.isdigit() else unit.min_freq
+                    unit.max_freq = int(new_max_freq) if new_max_freq.isdigit() else unit.max_freq
 
         # Display configurations after adjustments
         self.console.print(f"\n[bold cyan]After Adjustments:[/bold cyan]")
