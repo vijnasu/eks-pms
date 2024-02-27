@@ -88,8 +88,10 @@ class FrequencyConfigurator:
         prompt_text_min = f"Enter new minimum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
         prompt_text_max = f"Enter new maximum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
 
-        new_min_freq = Prompt.ask(prompt_text_min, validate=self.validate_frequency)
-        new_max_freq = Prompt.ask(prompt_text_max, validate=self.validate_frequency)
+        new_min_freq = Prompt.ask(prompt_text_min)
+        self.validate_frequency(new_min_freq)
+        new_max_freq = Prompt.ask(prompt_text_max)
+        self.validate_frequency(new_max_freq)
 
         for unit in self.units:
             if self.is_uncore:
