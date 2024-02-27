@@ -126,6 +126,10 @@ def adjust_cpu_uncore_configuration(cpu):
     
 def commit_changes_concurrently(cores):
     threads = []
+    
+    if not isinstance(cores, (list, tuple, set)):
+        cores = [cores]  # Make it a list if it's a single Core object
+
     for core in cores:
         thread = threading.Thread(target=commit_core_changes, args=(core,))
         threads.append(thread)
