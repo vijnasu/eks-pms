@@ -58,11 +58,18 @@ dataloader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True)
 model.eval()
 
 # Perform inference on the test data
+generated_data_list = []
 with torch.no_grad():
-    generated_data = model(dataloader)
+    for batch in dataloader:
+        inputs, _ = batch  # We don't need the targets
+        generated_batch = model(inputs)
+        generated_data_list.append(generated_batch)
+
+# Concatenate all generated data batches
+generated_data = torch.cat(generated_data_list, dim=0)
 
 # Process the generated data (if needed)
 # ...
 
-# Print the generated data
+# Print or save the generated data
 print(generated_data)
