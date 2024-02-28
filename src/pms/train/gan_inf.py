@@ -43,16 +43,18 @@ if non_numeric_columns:
 # Selecting relevant features and the target
 input_features = df.drop(columns=['MLC_Idle_Memory_Latency_Local_Random'])
 target = df[['MLC_Idle_Memory_Latency_Local_Random']]
+
 # Standardize the features
 scaler = StandardScaler()
 input_features_scaled = scaler.fit_transform(input_features)
-target_scaled = scaler.fit_transform(target)
+# No need to scale target for inference in GAN, as we're generating new data
 
 # Convert to PyTorch tensors
 tensor_input_features = torch.Tensor(input_features_scaled)
-tensor_target = torch.Tensor(target_scaled)
-dataset = TensorDataset(tensor_input_features, tensor_target)
-dataloader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True)
+# Create dummy tensor for targets since we're only interested in generating data, not pairing it with real targets
+dummy_targets = torch.zeros(tensor_input_features.size(0), 1)  # Adjust the size if necessary
+dataset = TensorDataset(tensor_input_features, dummy_targets)
+dataloader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=False)
 
 # Set the model to evaluation mode
 model.eval()
