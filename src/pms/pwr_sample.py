@@ -90,21 +90,27 @@ class FrequencyConfigurator:
         # Ask for new frequencies only once
         prompt_text_min = f"Enter new minimum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
         prompt_text_max = f"Enter new maximum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
-
+        
+        # Combined loop for both minimum and maximum frequency inputs
         while True:
             new_min_freq = Prompt.ask(prompt_text_min)
-            if self.validate_frequency(new_min_freq):
-                break
-            else:
-                self.console.print(Text(f"Range: {self.units[0].lowest_freq} MHz and {self.units[0].highest_freq} MHz", end=" ", style="red"))
-
-        while True:
             new_max_freq = Prompt.ask(prompt_text_max)
-            if self.validate_frequency(new_max_freq):
-                break
-            else:
-                self.console.print(Text(f"Range: {self.units[0].lowest_freq} MHz and {self.units[0].highest_freq} MHz", end=" ", style="red"))
 
+            # Validate frequencies
+            if not self.validate_frequency(new_min_freq):
+                self.console.print(Text(f"Invalid range for minimum frequency. Range: {self.units[0].lowest_freq} MHz to {self.units[0].highest_freq} MHz.", style="red"))
+                continue  # Skip the rest of the loop and prompt again
+
+            if not self.validate_frequency(new_max_freq):
+                self.console.print(Text(f"Invalid range for maximum frequency. Range: {self.units[0].lowest_freq} MHz to {self.units[0].highest_freq} MHz.", style="red"))
+                continue  # Skip the rest of the loop and prompt again
+
+            if int(new_min_freq) > int(new_max_freq):
+                self.console.print(Text("Invalid input. Minimum frequency cannot be greater than maximum frequency.", style="red"))
+                continue  # Skip the rest of the loop and prompt again
+
+            break  # Both inputs are valid and min_freq <= max_freq, exit the loop
+            
         for unit in self.units:
             if self.is_uncore:
                 if hasattr(unit, '_uncore_kernel_avail') and unit._uncore_kernel_avail:  # Ensure attribute exists and uncore is available
