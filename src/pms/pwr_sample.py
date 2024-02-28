@@ -64,7 +64,7 @@ class FrequencyConfigurator:
                 # For uncore, we only have one set of frequencies per CPU, not per core
                 if self.is_uncore:
                     if unit._uncore_kernel_avail:  # Check if uncore frequencies are available
-                        if 400 <= freq <= 4700:
+                        if unit.lowest_freq <= freq <= unit.highest_freq:
                             return True
                         else:
                             raise ValueError
@@ -72,7 +72,7 @@ class FrequencyConfigurator:
                         raise ValueError
                 else:
                     if unit.online:
-                        if 400 <= freq <= 4700:
+                        if unit.lowest_freq <= freq <= unit.highest_freq:
                             return True
                     else:
                         raise ValueError
