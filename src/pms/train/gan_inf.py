@@ -22,7 +22,6 @@ model = torch.load('./models/generator_final.pth')
 df = pd.read_csv('./data/MLC_Idle_Memory_Latency_Local_Random.csv')
 
 # Preprocess the test data
-df = pd.read_csv(df)
 print(colored("Data loaded and preprocessing initiated...", "yellow"))
 # If 'DateTime' column exists, convert it to datetime and extract features
 if 'DateTime' in df.columns:
