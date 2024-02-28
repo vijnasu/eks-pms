@@ -69,20 +69,29 @@ class FrequencyConfigurator:
         except ValueError:
             self.console.print(Text("Invalid input. Please enter a numeric value.", style="red"))
             return False
-
-        valid_ranges = []
-        for unit in self.units:
-            if self.is_uncore and unit._uncore_kernel_avail or not self.is_uncore and unit.online:
-                valid_ranges.append((unit.lowest_freq, unit.highest_freq))
-                if unit.lowest_freq <= freq <= unit.highest_freq:
-                    return True
-
-        if not valid_ranges:
-            self.console.print(Text("No available units to configure.", style="red"))
-        else:
-            ranges_text = ', '.join([f"{low} MHz to {high} MHz" for low, high in valid_ranges])
-            self.console.print(Text(f"Invalid frequency range. Valid ranges are: {ranges_text}.", style="red"))
-        return False
+        try:
+            for unit in self.units:
+                # For uncore, we only have one set of frequencies per CPU, not per core
+                if self.is_uncore:
+                    if unit._uncore_kernel_avail:  # Check if uncore frequencies are available
+                        if unit.lowest_freq <= freq <= unit.highest_freq:
+                            return True
+                        else:
+                            return False
+                    else:
+                        self.console.print(Text("Uncore frequencies are not available.", style="red")) 
+                        return False
+                else:
+                    if unit.online:
+                        if unit.lowest_freq <= freq <= unit.highest_freq:
+                            return True
+                        else:
+                            return False
+                    else:
+                        self.console.print(Text("Core frequencies are not available.", style="red"))
+        except ValueError:
+            self.console.print(Text(f"Invalid input. Please enter a value between {unit.lowest_freq} MHz and {unit.highest_freq} MHz.", style="red"))
+            return False
 
     def batch_adjust_configurations(self):
         # Display current configurations before adjustments
