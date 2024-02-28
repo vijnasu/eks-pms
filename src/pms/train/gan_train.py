@@ -11,6 +11,38 @@ from termcolor import colored
 import matplotlib.pyplot as plt
 import os
 
+# Load configuration
+with open('gan_config_final.yaml', 'r') as file:
+    config = yaml.safe_load(file)
+
+# Generator
+class Generator(nn.Module):
+    def __init__(self, input_dim, output_dim):
+        super(Generator, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, config['generator']['first_layer_size']),
+            nn.LeakyReLU(config['leaky_relu_alpha']),
+            nn.Linear(config['generator']['first_layer_size'], config['generator']['second_layer_size']),
+            nn.LeakyReLU(config['leaky_relu_alpha']),
+            nn.Linear(config['generator']['second_layer_size'], output_dim),
+        )
+    def forward(self, z):
+        return self.model(z)
+
+# Discriminator
+class Discriminator(nn.Module):
+    def __init__(self, input_dim):
+        super(Discriminator, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, config['discriminator']['first_layer_size']),
+            nn.LeakyReLU(config['leaky_relu_alpha']),
+            nn.Linear(config['discriminator']['first_layer_size'], config['discriminator']['second_layer_size']),
+            nn.LeakyReLU(config['leaky_relu_alpha']),
+            nn.Linear(config['discriminator']['second_layer_size'], 1),  # No sigmoid activation
+        )
+    def forward(self, data):
+        return self.model(data)
+
 # Function to compute the gradient penalty for WGAN-GP
 def compute_gradient_penalty(D, real_samples, fake_samples):
     """Calculates the gradient penalty loss for WGAN GP"""
@@ -67,35 +99,6 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
     dataset = TensorDataset(tensor_input_features, tensor_target)
     dataloader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True)
 
-    # Generator
-    class Generator(nn.Module):
-        def __init__(self, input_dim, output_dim):
-            super(Generator, self).__init__()
-            self.model = nn.Sequential(
-                nn.Linear(input_dim, config['generator']['first_layer_size']),
-                nn.LeakyReLU(config['leaky_relu_alpha']),
-                nn.Linear(config['generator']['first_layer_size'], config['generator']['second_layer_size']),
-                nn.LeakyReLU(config['leaky_relu_alpha']),
-                nn.Linear(config['generator']['second_layer_size'], output_dim),
-            )
-
-        def forward(self, z):
-            return self.model(z)
-
-    # Discriminator
-    class Discriminator(nn.Module):
-        def __init__(self, input_dim):
-            super(Discriminator, self).__init__()
-            self.model = nn.Sequential(
-                nn.Linear(input_dim, config['discriminator']['first_layer_size']),
-                nn.LeakyReLU(config['leaky_relu_alpha']),
-                nn.Linear(config['discriminator']['first_layer_size'], config['discriminator']['second_layer_size']),
-                nn.LeakyReLU(config['leaky_relu_alpha']),
-                nn.Linear(config['discriminator']['second_layer_size'], 1),  # No sigmoid activation
-            )
-
-        def forward(self, data):
-            return self.model(data)
 
     # Initialize models and optimizers
     input_dim = input_features.shape[1] + target.shape[1]
@@ -195,9 +198,6 @@ def train_gan(config, data_path='./data/MLC_Idle_Memory_Latency_Local_Random.csv
 
 # main function
 def main():
-    # Load configuration
-    with open('gan_config_final.yaml', 'r') as file:
-        config = yaml.safe_load(file)
 
     # Load and preprocess the data
     df_idle_random = pd.read_csv('./data/MLC_Idle_Memory_Latency_Local_Random.csv')
