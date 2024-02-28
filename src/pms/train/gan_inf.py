@@ -10,13 +10,11 @@ from torch.autograd import Variable, grad
 from termcolor import colored
 import matplotlib.pyplot as plt
 import os
+from gan_train import Generator
 
 # Load configuration
 with open('gan_config_final.yaml', 'r') as file:
     config = yaml.safe_load(file)
-
-# Load the GAN model
-model = torch.load('./models/generator_final.pth')
 
 # Load the test data
 df = pd.read_csv('./data/MLC_Idle_Memory_Latency_Local_Random.csv')
@@ -54,6 +52,15 @@ tensor_input_features = torch.Tensor(input_features_scaled)
 dummy_targets = torch.zeros(tensor_input_features.size(0), 1)  # Adjust the size if necessary
 dataset = TensorDataset(tensor_input_features, dummy_targets)
 dataloader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=False)
+
+# Initialize the model
+input_dim = config['latent_dim']
+output_dim = target.shape[1]  # Adjust according to your model's expected output dimension
+model = Generator(input_dim, output_dim)
+
+# Load the state dictionary
+state_dict = torch.load('./models/generator_final.pth')
+model.load_state_dict(state_dict)
 
 # Set the model to evaluation mode
 model.eval()
