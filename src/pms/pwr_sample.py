@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.prompt import Prompt
 from rich.table import Table
 from rich.text import Text
+import queue
 
 class FrequencyConfigurator:
     def __init__(self, units, type_name, is_uncore=False):
@@ -150,7 +151,7 @@ def adjust_cpu_uncore_configuration(cpu):
 class CustomException(Exception):
     pass
 
-def commit_core_changes(cores):
+def commit_core_changes(cores, exception_queue=None):
     try:
         # Ensure 'cores' is always treated as a list, even if it's a single Core object
         if not isinstance(cores, (list, tuple, set)):
@@ -160,28 +161,34 @@ def commit_core_changes(cores):
             core.commit()
             print(colored(f"Changes committed for Core {core.core_id}.", "green"))
     except Exception as e:
-        raise CustomException("Error committing core changes") from e
+        if exception_queue is not None:
+            exception_queue.put(e)  # Store the exception in the queue
 
 def commit_changes_concurrently(cores):
-    try:
-        threads = []
+    
+    threads = []
+    exception_queue = queue.Queue()  # Queue to hold exceptions from threads
 
-        # Ensure 'cores' is a list for consistency in threading
-        if not isinstance(cores, (list, tuple, set)):
-            cores = [cores]  # Wrap single Core object in a list
+    # Ensure 'cores' is a list for consistency in threading
+    if not isinstance(cores, (list, tuple, set)):
+        cores = [cores]  # Wrap single Core object in a list
 
-        for core in cores:
-            # Pass each 'core' as a list containing a single Core object to ensure compatibility
-            thread = threading.Thread(target=commit_core_changes, args=([core],))  # Note the extra brackets around 'core'
-            threads.append(thread)
-            thread.start()
+    for core in cores:
+        # Pass each 'core' as a list containing a single Core object to ensure compatibility
+        thread = threading.Thread(target=commit_core_changes, args=([core], exception_queue))  # Note the extra brackets around 'core'
+        threads.append(thread)
+        thread.start()
 
-        for thread in threads:
-            thread.join()
+    for thread in threads:
+        thread.join()
+        
+    # Check if there were any exceptions in the threads
+    if not exception_queue.empty():
+        # Handle exceptions, for example by raising a custom exception
+        raise CustomException("Error committing core changes. Please contact support.")
+    else:
         print(colored("Concurrently committed changes for all cores.", "green"))
-    except CustomException as e:
-        print(colored(f"Error committing changes concurrently: {str(e)}", "red"))
-
+    
 def intelligent_apply_profiles(cores, default_profile="default"):
     try:
         for core in cores:
