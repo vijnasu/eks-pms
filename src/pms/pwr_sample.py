@@ -58,7 +58,13 @@ class FrequencyConfigurator:
         self.console.print(table)
         
     def validate_frequency(self, input):
+        # Ensure that input frequency is not empty
+        if not input.strip():
+            self.console.print(Text("Input cannot be empty. Please enter a valid frequency.", style="red"))
+            return False
+
         try:
+            # Convert input frequency to float
             freq = float(input)
             
             for unit in self.units:
