@@ -94,16 +94,16 @@ class FrequencyConfigurator:
             new_min_freq = Prompt.ask(prompt_text_min)
             if self.validate_frequency(new_min_freq):
                 break
-            else:                
-                self.console.print(Text(f"Out of range!", style="red"))
+            else:
+                self.console.print(Text(f"Range: {self.units[0].lowest_freq} MHz and {self.units[0].highest_freq} MHz", end=" ", style="red"))
 
         while True:
             new_max_freq = Prompt.ask(prompt_text_max)
             if self.validate_frequency(new_max_freq):
                 break
             else:
-                self.console.print(Text(f"Out of range!", style="red"))
-        
+                self.console.print(Text(f"Range: {self.units[0].lowest_freq} MHz and {self.units[0].highest_freq} MHz", end=" ", style="red"))
+
         for unit in self.units:
             if self.is_uncore:
                 if hasattr(unit, '_uncore_kernel_avail') and unit._uncore_kernel_avail:  # Ensure attribute exists and uncore is available
@@ -147,14 +147,68 @@ def adjust_cpu_uncore_configuration(cpu):
     cpu.uncore_max_freq = cpu.uncore_hw_max
     print(colored(f"CPU {cpu.cpu_id}: Uncore Min freq set to {cpu.uncore_min_freq}, Uncore Max freq set to {cpu.uncore_max_freq}", "cyan"))
     
-def commit_core_changes(cores):
-    # Ensure 'cores' is always treated as a list, even if it's a single Core object
-    if not isinstance(cores, (list, tuple, set)):
-        cores = [cores]  # Wrap single Core object in a list
+class CustomException(Exception):
+    pass
 
-    for core in cores:
-        core.commit()
-        print(colored(f"Changes committed for Core {core.core_id}.", "green"))
+def commit_core_changes(cores):
+    try:
+        # Ensure 'cores' is always treated as a list, even if it's a single Core object
+        if not isinstance(cores, (list, tuple, set)):
+            cores = [cores]  # Wrap single Core object in a list
+
+        for core in cores:
+            core.commit()
+            print(colored(f"Changes committed for Core {core.core_id}.", "green"))
+    except Exception as e:
+        raise CustomException("Error committing core changes") from e
+
+def commit_changes_concurrently(cores):
+    try:
+        threads = []
+
+        # Ensure 'cores' is a list for consistency in threading
+        if not isinstance(cores, (list, tuple, set)):
+            cores = [cores]  # Wrap single Core object in a list
+
+        for core in cores:
+            # Pass each 'core' as a list containing a single Core object to ensure compatibility
+            thread = threading.Thread(target=commit_core_changes, args=([core],))  # Note the extra brackets around 'core'
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+        print(colored("Concurrently committed changes for all cores.", "green"))
+    except CustomException as e:
+        print(colored(f"Error committing changes concurrently: {str(e)}", "red"))
+
+def intelligent_apply_profiles(cores, default_profile="default"):
+    try:
+        for core in cores:
+            # Placeholder for intelligent decision-making, e.g., based on core usage or temperature
+            profile = determine_profile_for_core(core)  # You need to define this function
+            core.commit(profile)
+        print(colored("Intelligently applied profiles based on core metrics.", "green"))
+    except Exception as e:
+        raise CustomException("Error applying profiles") from e
+
+def staggered_refresh_stats(system, cpus, cores):
+    try:
+        system.refresh_stats()  # Refresh system-wide stats
+        for cpu in cpus:
+            cpu.refresh_stats()  # Refresh CPU-specific stats
+            for core in cpu.core_list:
+                core.refresh_stats()  # Refresh core-specific stats, possibly staggered
+        print(colored("Staggered refresh of stats completed.", "green"))
+    except Exception as e:
+        raise CustomException("Error refreshing stats") from e
+
+def commit_system_changes(system):
+    try:
+        system.commit()
+        print(colored("Changes committed for the entire system.", "green"))
+    except Exception as e:
+        raise CustomException("Error committing system changes") from e
 
 def commit_changes_concurrently(cores):
     threads = []
