@@ -11,6 +11,7 @@ from termcolor import colored
 import matplotlib.pyplot as plt
 import os
 from gan_train import Generator
+from sklearn.decomposition import PCA
 
 # Load configuration
 with open('gan_config_final.yaml', 'r') as file:
@@ -46,8 +47,15 @@ scaler = StandardScaler()
 input_features_scaled = scaler.fit_transform(input_features)
 # No need to scale target for inference in GAN, as we're generating new data
 
-# Convert to PyTorch tensors
-tensor_input_features = torch.Tensor(input_features_scaled)
+# Adjust the number of components to match the Generator's input dimension
+pca = PCA(n_components=150)
+
+# Fit PCA on your scaled input features and transform the data
+input_features_pca = pca.fit_transform(input_features_scaled)
+
+# Convert the PCA-transformed features to a PyTorch tensor
+tensor_input_features = torch.Tensor(input_features_pca)
+
 # Create dummy tensor for targets since we're only interested in generating data, not pairing it with real targets
 dummy_targets = torch.zeros(tensor_input_features.size(0), 1)  # Adjust the size if necessary
 dataset = TensorDataset(tensor_input_features, dummy_targets)
