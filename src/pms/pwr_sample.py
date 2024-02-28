@@ -77,7 +77,7 @@ class FrequencyConfigurator:
                     else:
                         raise ValueError
         except ValueError:
-            self.console.print(Text("Invalid input. Please enter a value between 400 MHz and 4700 MHz.", style="red"))
+            self.console.print(Text(f"Invalid input. Please enter a value between {unit.lowest_freq} MHz and {unit.highest_freq} MHz.", style="red"))
             return False
 
     def batch_adjust_configurations(self):
@@ -88,11 +88,16 @@ class FrequencyConfigurator:
         prompt_text_min = f"Enter new minimum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
         prompt_text_max = f"Enter new maximum {'uncore' if self.is_uncore else ''} frequency (MHz) for all {self.type_name.lower()}{'s' if self.is_uncore else ' cores'}"
 
-        new_min_freq = Prompt.ask(prompt_text_min)
-        self.validate_frequency(new_min_freq)
-        new_max_freq = Prompt.ask(prompt_text_max)
-        self.validate_frequency(new_max_freq)
+        while True:
+            new_min_freq = Prompt.ask(prompt_text_min)
+            if self.validate_frequency(new_min_freq):
+                break
 
+        while True:
+            new_max_freq = Prompt.ask(prompt_text_max)
+            if self.validate_frequency(new_max_freq):
+                break
+        
         for unit in self.units:
             if self.is_uncore:
                 if hasattr(unit, '_uncore_kernel_avail') and unit._uncore_kernel_avail:  # Ensure attribute exists and uncore is available
