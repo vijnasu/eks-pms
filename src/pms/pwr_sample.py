@@ -82,9 +82,11 @@ class FrequencyConfigurator:
                     if unit.online:
                         if unit.lowest_freq <= freq <= unit.highest_freq:
                             return True
+                        else:
+                            freq = (unit.lowest_freq + unit.highest_freq) // 2
+                            self.console.print(Text(f"Invalid input. Setting frequency to {freq} MHz.", style="yellow"))
                     else:
-                        freq = (unit.lowest_freq + unit.highest_freq) // 2
-                        self.console.print(Text(f"Invalid input. Setting frequency to {freq} MHz.", style="yellow"))
+                        raise ValueError
         except ValueError:
             self.console.print(Text(f"Invalid input. Please enter a value between {unit.lowest_freq} MHz and {unit.highest_freq} MHz.", style="red"))
             return False
