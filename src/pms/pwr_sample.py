@@ -94,11 +94,15 @@ class FrequencyConfigurator:
             new_min_freq = Prompt.ask(prompt_text_min)
             if self.validate_frequency(new_min_freq):
                 break
+            else:                
+                self.console.print(Text(f"Out of range!", style="red"))
 
         while True:
             new_max_freq = Prompt.ask(prompt_text_max)
             if self.validate_frequency(new_max_freq):
                 break
+            else:
+                self.console.print(Text(f"Out of range!", style="red"))
         
         for unit in self.units:
             if self.is_uncore:
