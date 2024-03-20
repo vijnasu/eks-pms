@@ -9,7 +9,7 @@ from rich.prompt import Prompt
 from rich.table import Table
 from rich.text import Text
 import queue
-
+from ipm_rest_api import ipm_rest_api
 class FrequencyConfigurator:
     def __init__(self, units, type_name, is_uncore=False):
         self.units = units  # 'units' can be a list of Core or CPU instances, depending on the context
@@ -322,7 +322,14 @@ def exit_program():
     print(colored("\nExiting program.", "red"))
     sys.exit()
 
-def main():
+def display_main_menu():
+    print("1. Use REST API")
+    print("2. Frequency and Power Management")
+    print("3. Exit")
+    choice = input("Enter your choice: ")
+    return choice
+
+def handle_freq_power_management():
     system, cpus, cores = initialize_objects()
     while True:
         display_menu()
@@ -360,5 +367,15 @@ def main():
         else:
             print(colored("Invalid choice, please try again.", "red"))
 
-if __name__ == "__main__":
-    main()
+def main():
+    while True:
+        choice = display_main_menu()
+        if choice == "1":
+            ipm_rest_api.handle_rest_api()
+        elif choice == "2":
+            handle_freq_power_management()
+        elif choice == "3":
+            print("Exiting...")
+            break
+        else:
+            print("Invalid choice, please try again.")
